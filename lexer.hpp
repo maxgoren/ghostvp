@@ -28,7 +28,6 @@ Token Lexer::nextToken(char* input) {
     int match_len = 0;
     for (char* p = input; *p; *p++) {
         state = matrix[state][*p];
-        printf("%d -> ", state);
         if (state > 0 && accept[state] > -1) {
             last_match = state;
             match_len = (p-input)+1;
@@ -37,7 +36,6 @@ Token Lexer::nextToken(char* input) {
             break;
         }
     }
-    printf("\n");
     if (last_match == 0) {
         return {TK_EOI};
     }

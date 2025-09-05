@@ -56,6 +56,8 @@ struct Object {
     }
 };
 
+
+
 struct Scope {
     unordered_map<string, Object> bindings;
     Scope* enclosing;
@@ -111,7 +113,7 @@ class ScopeResolver : public Visitor {
         unordered_map<string, bool> definitions[255];
         int sp;
         void openScope() {
-            sp++;
+            ++sp;
         }
         void closeScope() {
             --sp;
@@ -121,6 +123,7 @@ class ScopeResolver : public Visitor {
         }
         void declareVarName(string name) {
             if (empty()) {
+                cout<<"In global scope, dont worry about it."<<endl;
                 return;
             }
             if (definitions[sp-1].find(name) != definitions[sp-1].end()) {
@@ -130,27 +133,135 @@ class ScopeResolver : public Visitor {
             definitions[sp-1][name] = false;
         }
         void defineVarName(string name) {
-            if (empty())
+            if (empty()) {
+                cout<<"In global scope dont worry about it."<<endl;
                 return;
+            }
             definitions[sp-1][name] = true;
         }
         void resolveVariableDepth(IdExpr* node, string name) {
-            for (int i = sp-1; i > 0; i--) {
+            if (empty()) {
+                cout<<"In global scope, we good G."<<endl;
+                return;
+            }
+            for (int i = sp-1; i >= 0; i--) {
                 if (definitions[i].find(name) != definitions[i].end()) {
-                    
+                    node->getToken().setScopeLevel(sp - 1 - i);
+                    cout<<name<<" resolved at scope "<<i<<endl;
+                    return;
                 }
             }
+            cout<<"Nah man, couldnt find "<<name<<endl;
         }
     public:
         ScopeResolver() {
             sp = 0;
         }
+        void visit(IdExpr* expr) {
+            cout<<"Resolving Id expression for "<<expr->getToken().getString()<<endl;
+            resolveVariableDepth(expr, expr->getToken().getString());
+        }
+        void visit(FunctionCallExpr* expr) {
+            cout<<"Resolving function call from "<<expr->getName()->getToken().getString()<<endl;
+            resolveVariableDepth(expr->getName(), expr->getName()->getToken().getString());
+        }
+        void visit(BinaryOpExpr* expr) {
+            expr->getLeft()->accept(this);
+            expr->getRight()->accept(this);
+        }
+        void visit(FuncDefStmt* stmt) {
+            string name = stmt->getName()->getToken().getString();
+            declareVarName(name);
+            defineVarName(name);
+            cout<<"Defining function "<<name<<endl;
+            stmt->getName()->accept(this); 
+            openScope();
+            stmt->getParams()->accept(this);
+            stmt->getBody()->accept(this);
+            closeScope();
+        }
+        void visit(BlockStmt* stmt) {
+            openScope();
+            stmt->getStatements()->accept(this);
+            closeScope();
+        }
+        void visit(StatementList* stmt) {
+            for (auto t : stmt->getList()) {
+                t->accept(this);
+            }
+        }
+        void visit(LetStmt* stmt) {
+            if (stmt->getExpression()->getToken().getSymbol() == TK_ID) {
+                declareVarName(stmt->getExpression()->getToken().getString());
+                stmt->getExpression()->accept(this);
+                defineVarName(stmt->getExpression()->getToken().getString());
+            }
+        }
+        void visit(PrintStmt* stmt) { stmt->getExpr()->accept(this); }
+        void visit(ExprStmt* stmt) { stmt->getExpression()->accept(this); }
+        void visit(WhileStmt* stmt) { 
+            stmt->getPredicate()->accept(this); 
+            stmt->getBody()->accept(this); 
+        }
+        void visit(IfStmt* stmt) { 
+            stmt->getPredicate()->accept(this);
+            stmt->getTruePath()->accept(this);
+            if (stmt->getFalsePath() != nullptr) {
+                stmt->getFalsePath()->accept(this);
+            }
+        }
+        void visit(ReturnStmt* stmt) { stmt->getExpression()->accept(this); }
+        void visit(ExpressionList* expr) { 
+            for (auto t : expr->getExpressions()) {
+                t->accept(this);
+            }
+        }
+        void visit(SubscriptExpr* expr) {
+            expr->getName()->accept(this);
+            expr->getSubsript()->accept(this);
+        }
+        void visit(ArrayConstructorExpr* expr) {
+            for (auto t : expr->getExpressions()) {
+                t->accept(this);
+            }
+         }
+         void visit(ConstExpr* expr) {
+
+         }
+         void visit(UnaryOpExpr* expr) {
+            expr->getExpr()->accept(this);
+         }
+};
+
+class ReturnStmtException : public std::exception {
+    virtual const char* what() const throw() {
+        return "return stmt";
+    }
 };
 
 class Interpreter : public Visitor {
     private:
         Context cxt;
         Stack<Object> sf;
+        void handleSubscriptAssignment(BinaryOpExpr* expr, Object rhs) {
+            auto x = dynamic_cast<SubscriptExpr*>(expr->getLeft());
+            x->getName()->accept(this);
+            Object m = sf.pop();
+            x->getSubsript()->accept(this);
+            int pos = sf.pop().numval;
+            m.arr->at(pos) = rhs;
+        }
+        void handleAssignment(BinaryOpExpr* expr, Object rhs) {
+            string name = expr->getLeft()->getToken().getString();
+            if (name == "[") {
+                handleSubscriptAssignment(expr, rhs);
+            } else {
+                cout<<"Assigning: ";
+                rhs.print();
+                cout<<" to "<<name<<endl;
+                cxt.add(name, rhs);
+            }
+        }
     public:
         Interpreter() {
 
@@ -186,6 +297,7 @@ class Interpreter : public Visitor {
         }
         void visit(ReturnStmt* stmt) {
             stmt->getExpression()->accept(this);
+            throw ReturnStmtException();
         }
         void visit(StatementList* stmt) {
             for (auto stmt : stmt->getList()) {
@@ -236,18 +348,13 @@ class Interpreter : public Visitor {
             Object rhs = sf.pop();
             switch (expr->getToken().getSymbol()) {
                 case TK_ASSIGN: {
-                    string name = expr->getLeft()->getToken().getString();
-                    cout<<"Assigning: ";
-                    rhs.print();
-                    cout<<" to "<<name<<endl;
-                    cxt.add(name, rhs);
+                    handleAssignment(expr, rhs);
                 } break;
-                case TK_LT: {
-                    sf.push(Object(lhs.numval < rhs.numval)); break;
-                } break;
-                case TK_EQ:  {
-                    sf.push(Object(lhs.numval == rhs.numval)); break;
-                } break;
+                case TK_LT: sf.push(Object(lhs.numval < rhs.numval)); break;
+                case TK_EQ: sf.push(Object(lhs.numval == rhs.numval)); break;
+                case TK_LTE: sf.push(Object(lhs.numval <= rhs.numval)); break;
+                case TK_GTE: sf.push(Object(lhs.numval >= rhs.numval)); break;
+                case TK_NEQ: sf.push(Object(lhs.numval != rhs.numval)); break;
                 case TK_ADD: sf.push(Object(lhs.numval+rhs.numval)); break;
                 case TK_SUB: sf.push(Object(lhs.numval-rhs.numval)); break;
                 case TK_MUL: sf.push(Object(lhs.numval*rhs.numval)); break;
@@ -277,7 +384,6 @@ class Interpreter : public Visitor {
                 Object val = sf.pop();
                 string name = ((IdExpr*)((LetStmt*)(*param))->getExpression())->getToken().getString();
                 scope->bindings[name] = val;
-                //cout<<"Bound "<<name<<" to value"<<endl;
                 param++;
                 arg++;
             }
@@ -285,7 +391,16 @@ class Interpreter : public Visitor {
                 cout<<"Error: function call has mismatched arguments."<<endl;
             }
             cxt.openScope(scope);
-            func.func->getBody()->accept(this);
+            try {
+                func.func->getBody()->accept(this);
+            } catch (ReturnStmtException rse) {
+
+            }
+            cxt.closeScope();
+        }
+        void visit(BlockStmt* stmt) {
+            cxt.openScope(new Scope());
+            stmt->getStatements()->accept(this);
             cxt.closeScope();
         }
         void visit(ExpressionList* exprs) {

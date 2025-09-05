@@ -26,6 +26,12 @@ class PrettyPrinter : public Visitor {
                 s->accept(this);
             }
         }
+        void visit(BlockStmt* stmt) {
+            enter();
+            say("Open block scope");
+            stmt->getStatements()->accept(this);
+            leave();
+        }
         void visit(PrintStmt* stmt) {
             enter();
             say("Print");
@@ -99,7 +105,7 @@ class PrettyPrinter : public Visitor {
         }
         void visit(IdExpr* expr) {
             enter();
-            say("IdExpr " + expr->getToken().getString());
+            say("IdExpr " + expr->getToken().getString() + ", " + to_string(expr->getToken().scopeLevel()));
             leave();
         }
         void visit(BinaryOpExpr* expr) {

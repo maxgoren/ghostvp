@@ -6,6 +6,7 @@
 #include "token.hpp"
 using namespace std;
 
+class BlockStmt;
 class StatementList;
 class ExprStmt;
 class PrintStmt;
@@ -27,6 +28,7 @@ class ArrayConstructorExpr;
 class Visitor {
     public:
         //statement node visitors
+        virtual void visit(BlockStmt* stmt) = 0;
         virtual void visit(StatementList* stmtList) = 0;
         virtual void visit(ExprStmt* stmt) = 0;
         virtual void visit(PrintStmt* stmt) = 0;
@@ -85,6 +87,23 @@ class StatementList : public StmtNode {
         }
         void accept(Visitor* visitor) {
             visitor->visit(this);
+        }
+};
+
+class BlockStmt : public StmtNode {
+    private:
+        StatementList* statements;
+    public:
+        BlockStmt(Token tk) : StmtNode(tk) { }
+        ~BlockStmt() { delete statements; }
+        StatementList* getStatements() {
+            return statements;
+        }
+        void setStatements(StatementList* stmt) {
+            statements = stmt;
+        }
+        void accept(Visitor* visit) {
+            visit->visit(this);
         }
 };
 

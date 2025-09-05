@@ -49,7 +49,11 @@ class Parser {
             switch (oper) {
                 case TK_ASSIGN: return 20;
                 case TK_LT: return 25;
+                case TK_GT: return 25;
                 case TK_EQ: return 25;
+                case TK_NEQ: return 25;
+                case TK_LTE: return 25;
+                case TK_GTE: return 25;
                 case TK_SUB: return 50;
                 case TK_ADD: return 50;
                 case TK_MUL: return 60;
@@ -110,6 +114,10 @@ class Parser {
             switch (current().getSymbol()) {
                 case TK_EQ:
                 case TK_LT: 
+                case TK_GT:
+                case TK_LTE:
+                case TK_GTE:
+                case TK_NEQ:
                 case TK_ASSIGN:
                 case TK_ADD: 
                 case TK_SUB:
@@ -257,6 +265,12 @@ class Parser {
                 return parseFunctionDefinition();
             } else if (expect(TK_RETURN)) {   
                 return parseReturn();
+            } else if (expect(TK_LC)) {
+                BlockStmt* bs = new BlockStmt(current());
+                match(TK_LC);
+                bs->setStatements(parseStmtList());
+                match(TK_RC);
+                return bs;
             } else {
                 return parseExprStmt();
             }
