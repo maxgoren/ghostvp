@@ -26,6 +26,13 @@ class PrettyPrinter : public Visitor {
                 s->accept(this);
             }
         }
+        void visit(BlockStmt* stmt) {
+            enter();
+            say("Open Block Scope");
+            stmt->getStatements()->accept(this);
+            say("Closing blocking scope.");
+            leave();
+        }
         void visit(PrintStmt* stmt) {
             enter();
             say("Print");
@@ -63,19 +70,19 @@ class PrettyPrinter : public Visitor {
         void visit(ReturnStmt* stmt) { 
             enter();
             say("Return Statement");
-            stmt->getExpression()->accept(this);
+            stmt->getExpr()->accept(this);
             leave();
         }
         void visit(LetStmt* stmt) {
             enter();
             say("Let Statement");
-            stmt->getExpression()->accept(this);
+            stmt->getExpr()->accept(this);
             leave();
         }
         void visit(ExprStmt* stmt) {
             enter();
             say("Expr Stmt");
-            stmt->getExpression()->accept(this);
+            stmt->getExpr()->accept(this);
             leave();
         } 
         void visit(ExpressionList* exprList) {
@@ -89,7 +96,7 @@ class PrettyPrinter : public Visitor {
             enter();
             say("Subscript: ");
             expr->getName()->accept(this);
-            expr->getSubsript()->accept(this);
+            expr->getSubscript()->accept(this);
             leave();
         }
         void visit(ConstExpr* expr) {
@@ -99,7 +106,7 @@ class PrettyPrinter : public Visitor {
         }
         void visit(IdExpr* expr) {
             enter();
-            say("IdExpr " + expr->getToken().getString());
+            say("IdExpr " + expr->getToken().getString() + ", scope: " + to_string(expr->getToken().scopeLevel()));
             leave();
         }
         void visit(BinaryOpExpr* expr) {

@@ -28,7 +28,7 @@ Token Lexer::nextToken(char* input) {
     int match_len = 0;
     for (char* p = input; *p; *p++) {
         state = matrix[state][*p];
-        printf("%d -> ", state);
+        //printf("%d -> ", state);
         if (state > 0 && accept[state] > -1) {
             last_match = state;
             match_len = (p-input)+1;
@@ -37,7 +37,7 @@ Token Lexer::nextToken(char* input) {
             break;
         }
     }
-    printf("\n");
+    //printf("\n");
     if (last_match == 0) {
         return {TK_EOI};
     }
@@ -48,13 +48,29 @@ bool Lexer::shouldSkip(char c) {
     return (c == ' ' || c == '\t' || c == '\r' || c == '\n'); 
 }
 
+
+Token quotedString(char* input) {
+    string str;
+    str.push_back(input[0]);
+    int i = 1;
+    while (input[i] && input[i] != '"')
+        str.push_back(input[i++]);
+    str.push_back('"');
+    return Token(TK_STRING, str);
+}
+
 vector<Token> Lexer::tokenizeInput(char* input) {
     vector<Token> tokens;
     for (int i = 0; input[i] != '\0';) { 
         while (shouldSkip(input[i])) i++;
-        Token next = nextToken(input+i);
+        Token next;
+        if (input[i] == '"') {
+            next = quotedString(input+i);
+        } else {
+            next = nextToken(input+i);
+        }
         if (next.getSymbol() != TK_EOI) {
-            cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
+            //cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
             i += next.getString().length();
             tokens.push_back(next);
         } else {

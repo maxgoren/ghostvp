@@ -63,7 +63,7 @@ class Parser {
         }
         ExprNode* parseFirst(int prec) {
             ExprNode* node = nullptr;
-            cout<<"Parse First on "<<current().getString()<<endl;
+            //cout<<"Parse First on "<<current().getString()<<endl;
             switch (current().getSymbol()) {
                 case TK_NUMBER:
                     node = new ConstExpr(current());
@@ -106,22 +106,8 @@ class Parser {
         }
         ExprNode* parseRest(ExprNode* lhs) {
             ExprNode* node = nullptr;
-            cout<<"Parse Rest on: "<<current().getString()<<endl;
+            //cout<<"Parse Rest on: "<<current().getString()<<endl;
             switch (current().getSymbol()) {
-                case TK_EQ:
-                case TK_LT: 
-                case TK_ASSIGN:
-                case TK_ADD: 
-                case TK_SUB:
-                case TK_MUL:
-                case TK_DIV: {
-                    BinaryOpExpr* node = new BinaryOpExpr(current());
-                    node->setLeft(lhs);
-                    int p = precedence(current().getSymbol());
-                    advance();
-                    node->setRight(parseExpression(p+10));
-                    return node;
-                } break; 
                 case TK_LP: {
                     FunctionCallExpr* node = new FunctionCallExpr(current());
                     node->setName((IdExpr*)lhs);
@@ -140,13 +126,31 @@ class Parser {
                 } break;
                 case TK_RB: return lhs;
                 case TK_RP: return lhs;
+                case TK_NEQ:
+                case TK_EQ:
+                case TK_LT: 
+                case TK_GT:
+                case TK_LTE:
+                case TK_GTE:
+                case TK_ASSIGN:
+                case TK_ADD: 
+                case TK_SUB:
+                case TK_MUL:
+                case TK_DIV: {
+                    BinaryOpExpr* node = new BinaryOpExpr(current());
+                    node->setLeft(lhs);
+                    int p = precedence(current().getSymbol());
+                    advance();
+                    node->setRight(parseExpression(p+10));
+                    return node;
+                } break; 
                 default:
                     break;
             }
             return node == nullptr ? lhs:node;
         }
         ExprNode* parseExpression(int prec) {
-            cout<<"ParseExpression on "<<current().getString()<<endl;
+            //cout<<"ParseExpression on "<<current().getString()<<endl;
             ExprNode* node = parseFirst(prec);
             while (!expect(TK_EOI) && !isSeperator(current().getSymbol()) && prec <= precedence(current().getSymbol())) {
                 if (expect(TK_RP) || expect(TK_RB))
@@ -164,21 +168,18 @@ class Parser {
             return el;
         }
         PrintStmt* parsePrint() {
-            cout<<"Parse Print Statement"<<endl;
             PrintStmt* node = new PrintStmt(current());
             match(TK_PRINTLN);
             node->setExpr(parseExpression(0));
             return node;
         }
         LetStmt* parseLet() {
-            cout<<"Parse Let Statement"<<endl;
             LetStmt* node = new LetStmt(current());
             match(TK_LET);
-            node->setExpression(parseExpression(0));
+            node->setExpr(parseExpression(0));
             return node;
         }
         WhileStmt* parseWhile() {
-            cout<<"Parse While Statement"<<endl;
             WhileStmt* node = new WhileStmt(current());
             match(TK_WHILE);
             match(TK_LP);
@@ -190,7 +191,6 @@ class Parser {
             return node;
         }
         IfStmt* parseIf() {
-            cout<<"Parse If Statement"<<endl;
             IfStmt* node = new IfStmt(current());
             match(TK_IF);
             match(TK_LP);
@@ -239,12 +239,18 @@ class Parser {
         }
         ExprStmt* parseExprStmt() {
             ExprStmt* node = new ExprStmt(current());
-            node->setExpression(parseExpression(0));
+            node->setExpr(parseExpression(0));
             return node;
         }
+        BlockStmt* parseBlock() {
+            BlockStmt* stmt = new BlockStmt(current());
+            match(TK_LC);
+            stmt->setStatements(parseStmtList());
+            match(TK_RC);
+            return stmt;
+        }
         StmtNode* parseStmt() {
-            Token curr = current();
-            cout<<"Parse Statement on: "<<curr.getString()<<endl;
+            //cout<<"Parse Statement on: "<<curr.getString()<<endl;
             if (expect(TK_PRINTLN)) {
                 return parsePrint();
             } else if (expect(TK_LET)) {
@@ -255,12 +261,25 @@ class Parser {
                 return parseIf();
             } else if (expect(TK_DEF)) {
                 return parseFunctionDefinition();
-            } else if (expect(TK_RETURN)) {   
+            } else if (expect(TK_RETURN)) {
                 return parseReturn();
+            } else if (expect(TK_LC)) {
+                return parseBlock();
             } else {
                 return parseExprStmt();
             }
             return nullptr;
+        }
+        StatementList* parseStmtList() {
+            StatementList* sl = new StatementList(current());
+            while (!expect(TK_EOI)) {
+                if (expect(TK_RC)) {
+                    return sl;
+                }
+                sl->addStatement(parseStmt());
+                if (expect(TK_SEMI)) advance();
+            }
+            return sl;
         }
         void init(vector<Token>& tkns) {
             int n = tkns.size();
@@ -276,17 +295,6 @@ class Parser {
             init(tkns);
         }
         Parser() { }
-        StatementList* parseStmtList() {
-            StatementList* sl = new StatementList(current());
-            while (!expect(TK_EOI)) {
-                if (expect(TK_RC)) {
-                    return sl;
-                }
-                sl->addStatement(parseStmt());
-                if (expect(TK_SEMI)) advance();
-            }
-            return sl;
-        }
         StatementList* parse(vector<Token> tkns) {
             init(tkns);
             return parseStmtList();

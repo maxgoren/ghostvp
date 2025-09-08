@@ -6,6 +6,7 @@
 #include "token.hpp"
 using namespace std;
 
+class BlockStmt;
 class StatementList;
 class ExprStmt;
 class PrintStmt;
@@ -27,6 +28,7 @@ class ArrayConstructorExpr;
 class Visitor {
     public:
         //statement node visitors
+        virtual void visit(BlockStmt* stmt) = 0;
         virtual void visit(StatementList* stmtList) = 0;
         virtual void visit(ExprStmt* stmt) = 0;
         virtual void visit(PrintStmt* stmt) = 0;
@@ -88,6 +90,22 @@ class StatementList : public StmtNode {
         }
 };
 
+class BlockStmt : public StmtNode {
+    private:
+        StatementList* statements;
+    public:
+        BlockStmt(Token tk) : StmtNode(tk) { }
+        void accept(Visitor* visitor) {
+            visitor->visit(this);
+        }
+        void setStatements(StatementList* stmt) {
+            statements = stmt;
+        }
+        StatementList* getStatements() {
+            return statements;
+        }
+};
+
 class PrintStmt : public StmtNode {
     private:
         ExprNode* expression;
@@ -113,10 +131,10 @@ class ExprStmt : public StmtNode {
         ~ExprStmt() {
             delete expression;
         }
-        ExprNode* getExpression() {
+        ExprNode* getExpr() {
             return expression;
         }
-        void setExpression(ExprNode* expr) {
+        void setExpr(ExprNode* expr) {
             expression = expr;
         }
         void accept(Visitor* visitor) {
@@ -132,10 +150,10 @@ class LetStmt : public StmtNode {
         ~LetStmt() {
             delete expression;
         }
-        ExprNode* getExpression() {
+        ExprNode* getExpr() {
             return expression;
         }
-        void setExpression(ExprNode* expr) {
+        void setExpr(ExprNode* expr) {
             expression = expr;
         }
         void accept(Visitor* visitor) {
@@ -214,7 +232,7 @@ class ReturnStmt : public StmtNode {
         void setExpression(ExprNode* expr) {
             expression = expr;
         }
-        ExprNode* getExpression() {
+        ExprNode* getExpr() {
             return expression;
         }
         void accept(Visitor* visitor) {
@@ -331,7 +349,7 @@ class SubscriptExpr : public ExprNode {
         IdExpr* getName() {
             return name;
         }
-        ExprNode* getSubsript() {
+        ExprNode* getSubscript() {
             return subscript;
         }
         void accept(Visitor* visitor) {

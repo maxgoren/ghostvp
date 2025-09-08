@@ -10,12 +10,14 @@ void readEvalPrintLoop() {
     Lexer lexer;
     Parser parser;
     PrettyPrinter* pp = new PrettyPrinter();
+    ScopeResolver* sr = new ScopeResolver();
     Interpreter* terp = new Interpreter();
     while (running) {
         cout<<"mgcgs> ";
         string input;
         getline(cin, input);
         auto ast = parser.parse(lexer.tokenizeInput(const_cast<char*>(input.data())));
+        sr->visit(ast);
         pp->visit(ast);
         terp->visit(ast);
     }
@@ -23,8 +25,10 @@ void readEvalPrintLoop() {
 
 void execFromCmd(char* data) {
     Lexer lexer;
-    Parser pp(lexer.tokenizeInput(data));
-    auto t = pp.parseStmtList();
+    Parser pp;
+    auto t = pp.parse(lexer.tokenizeInput(data));
+    ScopeResolver* sr = new ScopeResolver();
+    sr->visit(t);
     PrettyPrinter* pv = new PrettyPrinter();
     pv->visit(t);
     Interpreter* ev = new Interpreter();
