@@ -6,6 +6,7 @@
 {"while", TK_WHILE}
 {"return", TK_RETURN}
 {"println", TK_PRINTLN}
+{"lambda", TK_LAMBDA}
 {"\".*\"", TK_STRING}
 {"[A-Za-z][A-Za-z0-9_]*", TK_ID}
 {"\(", TK_LP}
@@ -27,4 +28,6 @@
 {"<=", TK_LTE}
 {";", TK_SEMI}
 {",", TK_COMMA}
+{"&", TK_LAMBDA}
+{"->", TK_PRODUCES}
 {"<fin.>", TK_EOI}
