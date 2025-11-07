@@ -1,25 +1,15 @@
 #ifndef prettyprint_hpp
 #define prettyprint_hpp
 #include "ast.hpp"
+#include "util.hpp"
 #include <iostream>
 using namespace std;
 
 class PrettyPrinter : public Visitor {
     private:
-        int depth;
-        void enter() {
-            depth++;
-        }
-        void leave() {
-            depth--;
-        }
-        void say(string s) {
-            for (int i = 0; i < depth; i++) cout<<" ";
-            cout<<s<<endl;
-        }
+        DepthTracker dt;
     public:
         PrettyPrinter() {
-            depth = 0;
         }
         void visit(StatementList* sl) {
             for (auto s : sl->getList()) {
@@ -27,114 +17,127 @@ class PrettyPrinter : public Visitor {
             }
         }
         void visit(BlockStmt* stmt) {
-            enter();
-            say("Open block scope");
+            dt.enter();
+            dt.say("Open block scope");
             stmt->getStatements()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(PrintStmt* stmt) {
-            enter();
-            say("Print");
+            dt.enter();
+            dt.say("Print");
             stmt->getExpr()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(WhileStmt* stmt) {
-            enter();
-            say("While Loop");
+            dt.enter();
+            dt.say("While Loop");
             stmt->getPredicate()->accept(this);
             stmt->getBody()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(IfStmt* stmt) {
-            enter();
-            say("If Stmt");
-            say("Predicate: ");
+            dt.enter();
+            dt.say("If Stmt");
+            dt.say("Predicate: ");
             stmt->getPredicate()->accept(this);
-            say("True Path: ");
+            dt.say("True Path: ");
             stmt->getTruePath()->accept(this);
             if (stmt->getFalsePath() != nullptr) {
-                say("False Path: ");
+                dt.say("False Path: ");
                 stmt->getFalsePath()->accept(this);
             }
-            leave();
+            dt.leave();
         }
         void visit(FuncDefStmt* stmt) {
-            enter();
-            say("Function Definition");
+            dt.enter();
+            dt.say("Function Definition");
             stmt->getName()->accept(this);
             stmt->getParams()->accept(this);
             stmt->getBody()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(ReturnStmt* stmt) { 
-            enter();
-            say("Return Statement");
+            dt.enter();
+            dt.say("Return Statement");
             stmt->getExpression()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(LetStmt* stmt) {
-            enter();
-            say("Let Statement");
+            dt.enter();
+            dt.say("Let Statement");
             stmt->getExpression()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(ExprStmt* stmt) {
-            enter();
-            say("Expr Stmt");
+            dt.enter();
+            dt.say("Expr Stmt");
             stmt->getExpression()->accept(this);
-            leave();
+            dt.leave();
         } 
+        void visit(LambdaExpr* expr) {
+            dt.enter();
+            dt.say("Lambda Expr");
+            expr->getParams()->accept(this);
+            expr->getBody()->accept(this);
+            dt.leave();
+        }
         void visit(ExpressionList* exprList) {
-            enter();
+            dt.enter();
             for (auto expr : exprList->getExpressions()) {
                 expr->accept(this);
             }
-            leave();
+            dt.leave();
         }
         void visit(SubscriptExpr* expr) {
-            enter();
-            say("Subscript: ");
+            dt.enter();
+            dt.say("Subscript: ");
             expr->getName()->accept(this);
             expr->getSubsript()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(ConstExpr* expr) {
-            enter();
-            say("ConstExpr " + expr->getToken().getString());
-            leave();
+            dt.enter();
+            dt.say("ConstExpr " + expr->getToken().getString());
+            dt.leave();
         }
         void visit(IdExpr* expr) {
-            enter();
-            say("IdExpr " + expr->getToken().getString() + ", " + to_string(expr->getToken().scopeLevel()));
-            leave();
+            dt.enter();
+            dt.say("IdExpr " + expr->getToken().getString() + ", " + to_string(expr->getToken().scopeLevel()));
+            dt.leave();
         }
         void visit(BinaryOpExpr* expr) {
-            enter();
-            say("Binary Op " + expr->getToken().getString());
+            dt.enter();
+            dt.say("Binary Op " + expr->getToken().getString());
             expr->getLeft()->accept(this);
             expr->getRight()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(UnaryOpExpr* expr) {
-            enter();
-            say("Unary Op " + expr->getToken().getString());
+            dt.enter();
+            dt.say("Unary Op " + expr->getToken().getString());
             expr->getExpr()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(FunctionCallExpr* expr) {
-            enter();
-            say("Function call");
+            dt.enter();
+            dt.say("Function call");
             expr->getName()->accept(this);
             expr->getArguments()->accept(this);
-            leave();
+            dt.leave();
         }
         void visit(ArrayConstructorExpr* expr) {
-            enter();
-            say("Array Constructor");
+            dt.enter();
+            dt.say("Array Constructor");
             for (auto t : expr->getExpressions()) {
                 t->accept(this);
             }
-            leave();
+            dt.leave();
+        }
+        void visit(ListOpExpr* expr) {
+            dt.enter("ListOp " + expr->getToken().getString());
+            expr->getList()->accept(this);
+            if (expr->getExpr() != nullptr) expr->getExpr()->accept(this);
+            dt.leave();
         }
 };
 

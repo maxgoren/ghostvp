@@ -24,6 +24,8 @@ class IdExpr;
 class FunctionCallExpr;
 class SubscriptExpr;
 class ArrayConstructorExpr;
+class ListOpExpr;
+class LambdaExpr;
 
 class Visitor {
     public:
@@ -46,6 +48,8 @@ class Visitor {
         virtual void visit(FunctionCallExpr* expr) = 0;
         virtual void visit(SubscriptExpr* expr) = 0;
         virtual void visit(ArrayConstructorExpr* expr) = 0;
+        virtual void visit(ListOpExpr* expr) = 0;
+        virtual void visit(LambdaExpr* expr) = 0;
 };
 
 class SyntaxNode {
@@ -430,6 +434,57 @@ class FunctionCallExpr : public ExprNode {
             arguments = exprs;
         }
 };
+
+class LambdaExpr : public ExprNode {
+        StatementList* params;
+        StatementList* body;
+    public:
+        LambdaExpr(Token tk) : ExprNode(tk) { }
+        ~LambdaExpr() {
+            delete params;
+            delete body;
+        }
+        void accept(Visitor* visitor) {
+            visitor->visit(this);
+        }
+        void setParams(StatementList* exprs) {
+            params = exprs;
+        }
+        void setBody(StatementList* stmts) {
+            body = stmts;
+        }
+        StatementList* getParams() {
+            return params;
+        }
+        StatementList* getBody() {
+            return body;
+        }
+};
+
+class ListOpExpr : public ExprNode {
+    private:
+        ExprNode* listExpr;
+        ExprNode* expr;
+    public:
+        ListOpExpr(Token tk) : ExprNode(tk) { }
+        ~ListOpExpr() { }
+         void accept(Visitor* visitor) {
+            visitor->visit(this);
+        }
+        void setList(ExprNode* expr) {
+            listExpr = expr;
+        }
+        ExprNode* getList() {
+            return listExpr;
+        }
+        void setExpr(ExprNode* exp) {
+            expr= exp;
+        }
+        ExprNode* getExpr() {
+            return expr;
+        }
+};
+
 
 
 #endif

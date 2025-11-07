@@ -27,10 +27,10 @@ void execFromCmd(char* data) {
     Lexer lexer;
     Parser pp(lexer.tokenizeInput(data));
     auto t = pp.parseStmtList();
-    ScopeResolver* sr = new ScopeResolver();
-    sr->visit(t);
     PrettyPrinter* pv = new PrettyPrinter();
     pv->visit(t);
+    ScopeResolver* sr = new ScopeResolver();
+    sr->visit(t);
     Interpreter* ev = new Interpreter();
     ev->visit(t);
 }

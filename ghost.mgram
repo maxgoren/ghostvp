@@ -1,0 +1,15 @@
+program -> stmt_list
+stmt_list -> stmt ';' {stmt*}
+stmt -> while_stmt | if_stmt | print_stmt | let_stmt | func_def_stmt | expr_stmt
+while_stmt -> 'while' '(' predicate_expr ')' '{' stmt_list '}'
+if_stmt ->   'if' '(' predicate_expr ')' '{' stmt_list '}' 'else' '{' stmt_list '}'
+let_stmt -> 'let' id_expr { ':=' assign_expr } ';'
+print_stmt -> 'println' assign_expr ';'
+expr_stmt -> assign_expr ';'
+assign_expr -> predicate_expr ':=' predicate_expr 
+predicate_expr -> rel_expr ['==' | '!='] rel_expr
+rel_expr -> add_expr ['<' | '>' | '<=' | '>='] add_expr
+add_expr -> mul_expr ['+' | '-'] mul_expr
+unary_expr -> '-' val_expr | val_expr
+val_expr -> primary '(' param_list ')' | primary '[' primary ']'
+primary -> identifier | number | '(' assign_expr ')'

@@ -24,7 +24,7 @@ class Token {
         TKSymbol getSymbol() { return symbol; }
         string getString() { return strval; }
         int scopeLevel() { return depth; }
-        void setScopeLevel(int level) { depth = level; }
+        void setScopeLevel(int level) { depth = level; cout<<"Set Depth to "<<depth<<endl; }
 };
 
 #endif
