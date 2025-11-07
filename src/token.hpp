@@ -1,4 +1,3 @@
-<<<<<<< HEAD:token.hpp
 #ifndef token_hpp
 #define token_hpp
 #include <iostream>
@@ -28,25 +27,4 @@ class Token {
         void setScopeLevel(int level) { depth = level; cout<<"Set Depth to "<<depth<<endl; }
 };
 
-=======
-#ifndef token_hpp
-#define token_hpp
-#include <iostream>
-#include "lexer_matrix.h"
-using namespace std;
-
-class Token {
-    private:
-        TKSymbol symbol;
-        string strval;
-        int depth;
-    public:
-        Token(TKSymbol sym = TK_EOI, string st = "<nil>") : symbol(sym), strval(st), depth(-1) { }
-        TKSymbol getSymbol() { return symbol; }
-        string getString() { return strval; }
-        int scopeLevel() { return depth; }
-        void setScopeLevel(int level) { depth = level; }
-};
-
->>>>>>> 86f9ac45c8927245ccea6bc7db5f04f076f4188b:src/token.hpp
 #endif

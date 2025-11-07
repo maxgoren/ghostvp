@@ -1,4 +1,3 @@
-<<<<<<< HEAD:lexer.hpp
 #ifndef lexer_hpp
 #define lexer_hpp
 #include <iostream>
@@ -28,7 +27,7 @@ Token Lexer::nextToken(char* input) {
     int last_match = 0;
     int match_len = 0;
     for (char* p = input; *p; *p++) {
-        cout<<state<<"("<<*p<<") -> ";
+        //cout<<state<<"("<<*p<<") -> ";
         state = matrix[state][*p];
         if (state > 0 && accept[state] > -1) {
             last_match = state;
@@ -38,7 +37,7 @@ Token Lexer::nextToken(char* input) {
             break;
         }
     }
-    cout<<endl;
+    //cout<<endl;
     if (last_match == 0) {
         return {TK_EOI};
     }
@@ -71,7 +70,7 @@ vector<Token> Lexer::tokenizeInput(char* input) {
         if (input[i] == '"') next = extractString(input+i);
         else next = nextToken(input+i);
         if (next.getSymbol() != TK_EOI) {
-            cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
+           // cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
             i += next.getString().length();
             tokens.push_back(next);
         } else {
@@ -81,88 +80,4 @@ vector<Token> Lexer::tokenizeInput(char* input) {
     tokens.push_back(Token(TK_EOI, "<fin>"));
     return tokens;
 }
-=======
-#ifndef lexer_hpp
-#define lexer_hpp
-#include <iostream>
-#include <vector>
-#include "token.hpp"
-#include "lexer_matrix.h"
-using namespace std;
-
-class Lexer {
-    private:
-        bool shouldSkip(char ch);
-        Token makeLexToken(TKSymbol symbol, char* text, int length);
-        Token nextToken(char* input);
-    public:
-        Lexer();
-        vector<Token> tokenizeInput(char* input);
-};
-
-Lexer::Lexer() { }
-
-Token Lexer::makeLexToken(TKSymbol symbol, char* text, int length) {
-    return Token(symbol, string(text, length));
-}
-
-Token Lexer::nextToken(char* input) {
-    int state = 1;
-    int last_match = 0;
-    int match_len = 0;
-    for (char* p = input; *p; *p++) {
-        state = matrix[state][*p];
-        printf("%d -> ", state);
-        if (state > 0 && accept[state] > -1) {
-            last_match = state;
-            match_len = (p-input)+1;
-        }
-        if (state < 1) {
-            break;
-        }
-    }
-    printf("\n");
-    if (last_match == 0) {
-        return {TK_EOI};
-    }
-    return makeLexToken((TKSymbol)accept[last_match], input, match_len);
-}
-
-bool Lexer::shouldSkip(char c) {
-    return (c == ' ' || c == '\t' || c == '\r' || c == '\n'); 
-}
-
-
-Token quotedString(char* input) {
-    string str;
-    str.push_back(input[0]);
-    int i = 1;
-    while (input[i] && input[i] != '"')
-        str.push_back(input[i++]);
-    str.push_back('"');
-    return Token(TK_STRING, str);
-}
-
-vector<Token> Lexer::tokenizeInput(char* input) {
-    vector<Token> tokens;
-    for (int i = 0; input[i] != '\0';) { 
-        while (shouldSkip(input[i])) i++;
-        Token next;
-        if (input[i] == '"') {
-            next = quotedString(input+i);
-        } else {
-            next = nextToken(input+i);
-        }
-        if (next.getSymbol() != TK_EOI) {
-            cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
-            i += next.getString().length();
-            tokens.push_back(next);
-        } else {
-            i++;
-        }
-    }
-    tokens.push_back(Token(TK_EOI, "<fin>"));
-    return tokens;
-}
->>>>>>> 86f9ac45c8927245ccea6bc7db5f04f076f4188b:src/lexer.hpp
 #endif
