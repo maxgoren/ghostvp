@@ -42,36 +42,7 @@ class Function {
         }
 };
 
-class ClassObject {
-    private:
-        friend class Interpreter;
-        Scope* scope;
-        Scope* members;
-        IdExpr* name;
-        StatementList* body;
-    public:
-        ClassObject() {
-
-        }
-        void setBody(StatementList* s) {
-            body = s;
-        }
-        void setName(IdExpr* expr) {
-            name = expr;
-        }
-        void setParentScope(Scope* s) {
-            scope = s;
-        }
-        StatementList* getBody() {
-            return body;
-        }
-        IdExpr* getName() {
-            return name;
-        }
-        Scope* getEnv() {
-            return members;
-        }
-};
+class ClassObject;
 
 struct Object {
     ObjectType type;
@@ -102,6 +73,7 @@ struct Object {
             case BOOL: boolval = o.boolval; break;
             case FUNC: func = o.func; break;
             case ARRAY: arr = o.arr; break;
+            case OBJECT: clazz = o.clazz; break;
         }
     }
     Object& operator=(const Object& o) {
@@ -114,6 +86,7 @@ struct Object {
                 case BOOL: boolval = o.boolval; break;
                 case FUNC: func = o.func; break;
                 case ARRAY: arr = o.arr; break;
+                case OBJECT: clazz = o.clazz; break;
             }
         }
         return *this;
@@ -124,7 +97,9 @@ struct Object {
             case NUMBER: return to_string(numval);
             case BOOL: return (boolval ? "true":"false");
             case FUNC:  return "(func)";
-            case OBJECT: return "(object)";
+            case OBJECT: {
+                return "(object)";
+            } break;
             case ARRAY: {
                 string asStr = "[ ";
                 for (auto m : *arr) {
@@ -143,6 +118,33 @@ struct Object {
     void print() {
         cout<<this->toString()<<endl;
     }
+};
+
+class ClassObject {
+    private:
+        friend class Interpreter;
+        string typeName;
+        bool instantiated;
+        unordered_map<string, Object> fields;
+    public:
+        ClassObject() {
+
+        }
+        void setName(string n) {
+            typeName = n;
+        }
+        string getTypeName() {
+            return typeName;
+        }
+        bool isAlive() {
+            return instantiated;
+        }
+        Object getMember(string name) {
+            return fields[name];
+        }
+        void setMember(string name, Object m) {
+            fields[name] = m;
+        }
 };
 
 #endif

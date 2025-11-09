@@ -24,7 +24,7 @@ void readEvalPrintLoop(bool loud) {
             trace = !trace;
         } else {
             sb->init(input);
-        auto ast = parser.parse(lexer.tokenizeInput(sb), trace);
+        auto ast = parser.parse(lexer.tokenizeInput(sb), true);
             sr->visit(ast);
             if (trace)
                 pp->visit(ast);

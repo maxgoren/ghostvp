@@ -10,7 +10,7 @@ class DepthTracker {
         int depth;
         bool loud;
     public:
-        DepthTracker(bool trace = false) {
+        DepthTracker(bool trace = true) {
             depth = 0;
             loud = trace;
         }

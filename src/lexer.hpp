@@ -31,7 +31,7 @@ Token Lexer::nextToken() {
     int len = 0;
     int start = buffer->markStart();
     for (char p = buffer->get(); !buffer->done(); buffer->advance(), len++) {
-        cout<<state<<"("<<buffer->get()<<") -> ";
+        //cout<<state<<"("<<buffer->get()<<") -> ";
         state = matrix[state][buffer->get()];
         if (state > 0 && accept[state] > -1) {
             last_match = state;
@@ -41,7 +41,7 @@ Token Lexer::nextToken() {
             break;
         }
     }
-    cout<<endl;
+    //cout<<endl;
     if (last_match == 0) {
         return {TK_EOI};
     }
@@ -78,7 +78,7 @@ vector<Token> Lexer::tokenizeInput(CharBuffer* buff) {
         Token next;
         next = nextToken();
         if (next.getSymbol() != TK_EOI) {
-            cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
+           // cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
             tokens.push_back(next);
         } else {
             buffer->advance();

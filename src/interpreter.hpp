@@ -36,11 +36,21 @@ class Interpreter : public Visitor {
             x->getName()->accept(this);
             Object m = sf.pop();
             x->getSubsript()->accept(this);
-            int pos = sf.pop().numval;
-            switch (expr->getToken().getSymbol()) {
-                case TK_ASSIGN: m.arr->at(pos) = rhs; break;
-                case TK_ASSIGN_SUM: m.arr->at(pos) = add(m.arr->at(pos), rhs); break;
-                case TK_ASSIGN_DIFF: m.arr->at(pos) = sub(m.arr->at(pos), rhs); break;
+            if (m.type == ARRAY) {
+                int pos = sf.pop().numval;
+                switch (expr->getToken().getSymbol()) {
+                    case TK_ASSIGN: m.arr->at(pos) = rhs; break;
+                    case TK_ASSIGN_SUM: m.arr->at(pos) = add(m.arr->at(pos), rhs); break;
+                    case TK_ASSIGN_DIFF: m.arr->at(pos) = sub(m.arr->at(pos), rhs); break;
+                }
+            } else if (m.type == OBJECT) {
+                ClassObject* co = m.clazz;
+                string name = x->getSubsript()->getToken().getString();
+                if (co->fields.find(name) == co->fields.end()) {
+                    cout<<name<<"? never heard of it for a  "<<co->getTypeName()<<endl;
+                    return;
+                }
+                co->fields[name] = rhs;
             }
         }
         void handleAssignment(BinaryOpExpr* expr, Object rhs) {
@@ -277,9 +287,19 @@ class Interpreter : public Visitor {
         void visit(SubscriptExpr* expr) {
             expr->getName()->accept(this);
             Object arr = sf.pop();
-            expr->getSubsript()->accept(this);
-            Object idx = sf.pop();
-            sf.push(arr.arr->at(idx.numval));
+            if (arr.type == ARRAY) {
+                expr->getSubsript()->accept(this);
+                Object idx = sf.pop();
+                sf.push(arr.arr->at(idx.numval));
+            } else if (arr.type == OBJECT) {
+                ClassObject* co = arr.clazz;
+                string name = expr->getSubsript()->getToken().getString();
+                if (co->fields.find(name) == co->fields.end()) {
+                    cout<<name<<"? never heard of it for a  "<<co->getTypeName()<<endl;
+                    return;
+                }
+                sf.push(co->fields[name]);
+            }
         }
         void visit(BinaryOpExpr* expr) {
             expr->getLeft()->accept(this);
@@ -346,18 +366,33 @@ class Interpreter : public Visitor {
             }
         }
         void visit(ObjectConstructorExpr* expr) {
-            expr->getName()->accept(this);
-            for (auto t : expr->getExpressions()) {
-                t->accept(this);
+            string name = expr->getName()->getToken().getString();
+            ClassObject* bt = cxt.getClassDef(name);
+            if (bt == nullptr) {
+                cout<<"What!?"<<endl;
+                return;
             }
+            ClassObject* nobj = new ClassObject();
+            nobj->typeName = name;
+            for (auto t : bt->fields) {
+                cout<<name<<" inherits "<<t.first<<endl;
+                nobj->fields[t.first] = Object();  
+            }
+            nobj->instantiated = true;
+            sf.push(Object(nobj));
         }
         void visit(ObjectDefStmt* stmt) {
             ClassObject* t = new ClassObject();
-            t->setName(stmt->getName());
-            t->setBody(stmt->getBody());
             string name = stmt->getName()->getToken().getString();
-            cxt.addClassDef(name, t);
-            cout<<name<<" defined."<<endl;
+            t->typeName = name;
+            t->instantiated = false;
+            for (auto q : stmt->getBody()->getList()) {
+                LetStmt* ls = ((LetStmt*)q);
+                IdExpr* n = (IdExpr*)(ls->getExpression());
+                t->setMember(n->getToken().getString(), Object());
+            }
+            cxt.addClassDef(t->getTypeName(), t);
+            cout<<"'"<<t->getTypeName()<<"' defined."<<endl;
         }
 };
 

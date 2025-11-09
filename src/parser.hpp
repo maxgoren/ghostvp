@@ -248,7 +248,7 @@ class Parser {
                     SubscriptExpr* node = new SubscriptExpr(current());
                     node->setName((IdExpr*)lhs);
                     match(TK_PERIOD);
-                    node->setSubscript(parseExpression(0));
+                    node->setSubscript(parseFirst(0));
                     dt.leave();
                     return node;
                 } break;
@@ -360,7 +360,7 @@ class Parser {
             dt.enter("Parse Class Definition");
             match(TK_CLASS);
             ObjectDefStmt* node = new ObjectDefStmt(current());
-            node->setName((IdExpr*)parseFirst(0));
+            node->setName((IdExpr*)parseExpression(0));
             match(TK_LC);
             node->setBody(parseStmtList());
             match(TK_RC);
