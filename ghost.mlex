@@ -1,4 +1,3 @@
-{"[0-9]+(\.[0-9]+)*", TK_NUMBER}
 {"if",TK_IF}
 {"or", TK_OR}
 {"and", TK_AND}
@@ -6,7 +5,9 @@
 {"get", TK_GET}
 {"let", TK_LET}
 {"map", TK_MAP}
+{"new", TK_NEW}
 {"pop", TK_POP}
+{"var", TK_LET}
 {"else", TK_ELSE}
 {"push", TK_PUSH}
 {"size", TK_SIZE}
@@ -16,6 +17,8 @@
 {"empty", TK_EMPTY}
 {"while", TK_WHILE}
 {"false", TK_FALSE}
+{"class", TK_CLASS}
+{"public", TK_PUBLIC}
 {"append", TK_APPEND}
 {"filter", TK_FILTER}
 {"reduce", TK_REDUCE}
@@ -25,8 +28,8 @@
 {"\".*\"", TK_STRING}
 {"\(", TK_LP}
 {"\)", TK_RP}
-{"{", TK_LC}
-{"}", TK_RC}
+{"\{", TK_LC}
+{"\}", TK_RC}
 {"\[", TK_LB}
 {"\]", TK_RB}
 {"\+", TK_ADD}
@@ -37,6 +40,9 @@
 {":=", TK_ASSIGN}
 {"\+=", TK_ASSIGN_SUM}
 {"-=", TK_ASSIGN_DIFF}
+{"=~", TK_MATCHRE}
+{"\+\+", TK_INCREMENT}
+{"--", TK_DECREMENT}
 {"<", TK_LT}
 {">", TK_GT}
 {"==", TK_EQ}
@@ -47,4 +53,5 @@
 {"&\(", TK_LAMBDA}
 {"->", TK_PRODUCE}
 {"[,]", TK_COMMA}
-{"<fin.>", TK_EOI}
+{"[.]", TK_PERIOD}
+{"[0-9]+([.][0-9]+)*", TK_NUMBER}

@@ -10,8 +10,9 @@ using namespace std;
     BOOL   = 3,
     FUNC   = 4,
     ARRAY  = 5,
-    POINTER  = 6,
-    NIL    = 7
+    OBJECT = 6,
+    POINTER  = 7,
+    NIL    = 8
 };
 
 struct Scope;
@@ -41,6 +42,37 @@ class Function {
         }
 };
 
+class ClassObject {
+    private:
+        friend class Interpreter;
+        Scope* scope;
+        Scope* members;
+        IdExpr* name;
+        StatementList* body;
+    public:
+        ClassObject() {
+
+        }
+        void setBody(StatementList* s) {
+            body = s;
+        }
+        void setName(IdExpr* expr) {
+            name = expr;
+        }
+        void setParentScope(Scope* s) {
+            scope = s;
+        }
+        StatementList* getBody() {
+            return body;
+        }
+        IdExpr* getName() {
+            return name;
+        }
+        Scope* getEnv() {
+            return members;
+        }
+};
+
 struct Object {
     ObjectType type;
     bool marked;
@@ -49,6 +81,7 @@ struct Object {
         double numval;
         bool boolval;
         Function* func;
+        ClassObject* clazz;
         vector<Object>* arr;
         Object* obj;
     };
@@ -58,6 +91,7 @@ struct Object {
     Object(Function* f) : type(FUNC), func(f), marked(false) { }
     Object(vector<Object>* a) : type(ARRAY), arr(a), marked(false) { }
     Object(Object* o) : type(POINTER), obj(o), marked(false) { }
+    Object(ClassObject* o) : type(OBJECT), clazz(o), marked(false) { }
     Object() : type(NIL), numval(0), marked(false) { } 
     Object(const Object& o) {
         type = o.type;
@@ -90,6 +124,7 @@ struct Object {
             case NUMBER: return to_string(numval);
             case BOOL: return (boolval ? "true":"false");
             case FUNC:  return "(func)";
+            case OBJECT: return "(object)";
             case ARRAY: {
                 string asStr = "[ ";
                 for (auto m : *arr) {

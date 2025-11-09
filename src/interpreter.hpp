@@ -3,6 +3,9 @@
 #include "context.hpp"
 #include "resolvescope.hpp"
 #include <cmath>
+#include "re/re_compiler.hpp"
+#include "re/subset_match.hpp"
+
 class ReturnStmtException : public std::exception {
     virtual const char* what() const throw() {
         return "return stmt";
@@ -42,7 +45,7 @@ class Interpreter : public Visitor {
         }
         void handleAssignment(BinaryOpExpr* expr, Object rhs) {
             string name = expr->getLeft()->getToken().getString();
-            if (name == "[") {
+            if (SubscriptExpr* ss = dynamic_cast<SubscriptExpr*>(expr->getLeft())) {
                 handleSubscriptAssignment(expr, rhs);
             } else {
                 //cout<<"Assigning: "<<rhs.toString()<<" to "<<name<<" at depth: "<<expr->getLeft()->getToken().scopeLevel()<<endl;
@@ -55,6 +58,17 @@ class Interpreter : public Visitor {
                 cxt.putAt(name, rhs, expr->getLeft()->getToken().scopeLevel());
                 
             }
+        }
+        void handleRegExMatch(Object txt, Object pat) {
+            RECompiler cmp;
+            REParser prs;
+            string text = txt.toString();
+            text = text.substr(1, text.length()-2);
+            string pattern = pat.toString();
+            pattern = pattern.substr(1, pattern.length()-2);
+            cout<<"Looking for "<<pattern<<" in "<<text<<endl;
+            NFA nfa = cmp.compile(prs.parse(pattern));
+            sf.push(Object(match(nfa, text)));
         }
         Scope* evaluateArguments(Function* func, list<ExprNode*> args) {
             Scope* scope = new Scope(func->closure, cxt.getStack());
@@ -89,6 +103,7 @@ class Interpreter : public Visitor {
                 case TK_ASSIGN_SUM:
                 case TK_ASSIGN_DIFF:
                 case TK_ASSIGN: handleAssignment(expr, rhs); break;
+                case TK_MATCHRE: handleRegExMatch(lhs, rhs);
                 case TK_LT: sf.push(Object(lhs.numval < rhs.numval)); break;
                 case TK_GT: sf.push(Object(lhs.numval > rhs.numval)); break;
                 case TK_EQ: sf.push(Object(lhs.numval == rhs.numval)); break;
@@ -105,6 +120,32 @@ class Interpreter : public Visitor {
                 default:
                     break;
             }
+        }
+        void doPush(ListOpExpr* expr, Object& m) {
+            expr->getExpr()->accept(this);
+            m.arr->insert(m.arr->begin(), sf.pop());
+            sf.push(m);
+        }
+        void doPop(Object& m) {
+            Object t = m.arr->at(0);
+            m.arr->erase(m.arr->begin());
+            sf.push(t);
+        }
+        void doAppend(ListOpExpr* expr, Object& m) {
+            expr->getExpr()->accept(this);
+            m.arr->push_back(sf.pop());
+            sf.push(m);
+        }
+        void doGet(ListOpExpr* expr, Object& m) {
+            expr->getExpr()->accept(this);
+            sf.push(m.arr->at(sf.pop().numval));
+        }
+        void doCdr(Object& m) {
+            vector<Object>* obj = new vector<Object>();
+            for (int i = 1; i < m.arr->size(); i++) {
+                obj->push_back(m.arr->at(i));
+            }
+            sf.push(Object(obj));
         }
         void doMap(ListOpExpr* expr, Object& m) {
             expr->getExpr()->accept(this);
@@ -222,20 +263,6 @@ class Interpreter : public Visitor {
             Scope* env = evaluateArguments(func.func, args);
             applyFunction(func.func, env);
         }
-        void visit(ConstExpr* expr) {
-            switch (expr->getToken().getSymbol()) {
-                case TK_NUMBER: 
-                    sf.push(Object(stod(expr->getToken().getString())));
-                    break;
-                case TK_STRING:
-                    sf.push(Object(expr->getToken().getString()));
-                    break;
-                case TK_TRUE:   sf.push(Object(true)); break;
-                case TK_FALSE:  sf.push(Object(false)); break;
-                default:
-                    break;
-            }
-        }
         void visit(IdExpr* expr) {
             sf.push(cxt.getAt(expr->getToken().getString(), expr->getToken().scopeLevel()));
         }
@@ -264,51 +291,45 @@ class Interpreter : public Visitor {
         void visit(UnaryOpExpr* expr) {
             expr->getExpr()->accept(this);
             Object v = sf.pop();
-            v.numval = -v.numval;
+            switch (expr->getToken().getSymbol()) {
+                case TK_SUB: v.numval = -v.numval; break;
+                case TK_INCREMENT: v.numval += 1; break;
+                case TK_DECREMENT: v.numval -= 1; break;
+            }
             sf.push(v);
+            string name = expr->getExpr()->getToken().getString();
+            int depth = expr->getExpr()->getToken().scopeLevel();
+            cxt.putAt(name, v, depth);
         }
         void visit(ListOpExpr* expr) {
             expr->getList()->accept(this);
             Object m = sf.pop();
+            if (m.type != ARRAY) {
+                cout<<"Error: "<<expr->getToken().getString()<<" expects a list."<<endl;
+                sf.push(Object());
+            }
             switch (expr->getToken().getSymbol()) {
-                case TK_EMPTY: sf.push(Object(m.arr->empty())); break;
-                case TK_SIZE:  sf.push(Object((double)m.arr->size())); break;
-                case TK_POP:  {
-                    Object t = m.arr->at(0);
-                    m.arr->erase(m.arr->begin());
-                    sf.push(t);
-                } break;
-                case TK_FIRST: sf.push(m.arr->at(0)); break;
-                case TK_REST: {
-                    vector<Object>* obj = new vector<Object>();
-                    for (int i = 1; i < m.arr->size(); i++) {
-                        obj->push_back(m.arr->at(i));
-                    }
-                    sf.push(Object(obj));
-                } break;
-                case TK_APPEND: {
-                    expr->getExpr()->accept(this);
-                    m.arr->push_back(sf.pop());
-                    sf.push(m);
-                } break;
-                case TK_GET: {
-                    expr->getExpr()->accept(this);
-                    sf.push(m.arr->at(sf.pop().numval));
-                } break;
-                case TK_PUSH: {
-                    expr->getExpr()->accept(this);
-                    m.arr->insert(m.arr->begin(), sf.pop());
-                    sf.push(m);
-                } break;
-                case TK_MAP: {
-                   doMap(expr, m);
-                } break;
-                case TK_FILTER: {
-                    doFilter(expr, m);
-                } break;
-                case TK_REDUCE: {
-
-                } break;
+                case TK_EMPTY: {  sf.push(Object(m.arr->empty())); } break;
+                case TK_SIZE:  {  sf.push(Object((double)m.arr->size())); } break;
+                case TK_FIRST: {  sf.push(m.arr->at(0)); } break;
+                case TK_MAP:   {  doMap(expr, m);    } break;
+                case TK_FILTER: { doFilter(expr, m); } break;
+                case TK_POP:    { doPop(m);        } break;
+                case TK_REST:   { doCdr(m);          } break;
+                case TK_APPEND: { doAppend(expr, m); } break;
+                case TK_GET:    { doGet(expr, m);    } break;
+                case TK_PUSH:   { doPush(expr, m);   } break;
+                case TK_REDUCE: {  } break;
+                default:
+                    break;
+            }
+        }
+        void visit(ConstExpr* expr) {
+            switch (expr->getToken().getSymbol()) {
+                case TK_NUMBER: sf.push(Object(stod(expr->getToken().getString()))); break;
+                case TK_STRING: sf.push(Object(expr->getToken().getString())); break;
+                case TK_TRUE:   sf.push(Object(true)); break;
+                case TK_FALSE:  sf.push(Object(false)); break;
                 default:
                     break;
             }
@@ -323,6 +344,20 @@ class Interpreter : public Visitor {
             for (auto e : exprs->getExpressions()) {
                 e->accept(this);
             }
+        }
+        void visit(ObjectConstructorExpr* expr) {
+            expr->getName()->accept(this);
+            for (auto t : expr->getExpressions()) {
+                t->accept(this);
+            }
+        }
+        void visit(ObjectDefStmt* stmt) {
+            ClassObject* t = new ClassObject();
+            t->setName(stmt->getName());
+            t->setBody(stmt->getBody());
+            string name = stmt->getName()->getToken().getString();
+            cxt.addClassDef(name, t);
+            cout<<name<<" defined."<<endl;
         }
 };
 

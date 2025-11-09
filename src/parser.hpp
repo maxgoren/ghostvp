@@ -61,12 +61,17 @@ class Parser {
                 case TK_NEQ: return 25;
                 case TK_LTE: return 25;
                 case TK_GTE: return 25;
+                case TK_MATCHRE: return 25;
                 case TK_SUB: return 50;
                 case TK_ADD: return 50;
                 case TK_MUL: return 60;
                 case TK_DIV: return 60;
                 case TK_MOD: return 60;
-                case TK_LB: return 80;
+                case TK_NEW:
+                case TK_INCREMENT:
+                case TK_DECREMENT:
+                case TK_PERIOD:
+                case TK_LB:
                 case TK_TRUE:
                 case TK_FALSE:
                 case TK_MAP:
@@ -130,6 +135,12 @@ class Parser {
                     dt.leave();
                     return node;
                 } break;
+                case TK_NEW: {
+                    ObjectConstructorExpr* node = new ObjectConstructorExpr(current());
+                    match(TK_NEW);
+                    node->setName((IdExpr*)parseExpression(0));
+                    return node;
+                }
                 case TK_LP: {
                     match(TK_LP);
                     node = parseExpression(0);
@@ -196,6 +207,7 @@ class Parser {
                 case TK_LTE:
                 case TK_GTE:
                 case TK_NEQ:
+                case TK_MATCHRE:
                 case TK_AND:
                 case TK_OR:
                 case TK_ASSIGN:
@@ -232,6 +244,22 @@ class Parser {
                     dt.leave();
                     return node;
                 } break;
+                case TK_PERIOD: {
+                    SubscriptExpr* node = new SubscriptExpr(current());
+                    node->setName((IdExpr*)lhs);
+                    match(TK_PERIOD);
+                    node->setSubscript(parseExpression(0));
+                    dt.leave();
+                    return node;
+                } break;
+                case TK_INCREMENT:
+                case TK_DECREMENT: {
+                    UnaryOpExpr* node = new UnaryOpExpr(current());
+                    match(current().getSymbol());
+                    node->setExpr(lhs);
+                    dt.leave();
+                    return node;
+                }
                 case TK_RB:
                 case TK_RP: 
                     dt.leave();
@@ -241,17 +269,7 @@ class Parser {
             }
             dt.leave();
             return node;
-            return node == nullptr ? lhs:node;
-        }
-        ExprNode* parseExpression(int prec) {
-            dt.enter("ParseExpression on " + current().getString());
-            ExprNode* node = parseFirst(prec);
-            while (!expect(TK_EOI) && !isSeperator(current().getSymbol()) && prec <= precedence(current().getSymbol())) {
-                if (expect(TK_RP) || expect(TK_RB))
-                    return node;
-                node = parseRest(node);
-            }
-            return node;
+           // return node == nullptr ? lhs:node;
         }
         ExpressionList* parseExprList() {
             ExpressionList* el = new ExpressionList(current());
@@ -338,6 +356,17 @@ class Parser {
             dt.leave();
             return node;
         }
+        ObjectDefStmt* parseClassDefinition() {
+            dt.enter("Parse Class Definition");
+            match(TK_CLASS);
+            ObjectDefStmt* node = new ObjectDefStmt(current());
+            node->setName((IdExpr*)parseFirst(0));
+            match(TK_LC);
+            node->setBody(parseStmtList());
+            match(TK_RC);
+            dt.leave();
+            return node;
+        }
         ReturnStmt* parseReturn() {
             dt.enter("Parse Return statement");
             ReturnStmt* node = new ReturnStmt(current());
@@ -353,31 +382,49 @@ class Parser {
             dt.leave();
             return node;
         }
+        BlockStmt* parseBlock(){
+            BlockStmt* bs = new BlockStmt(current());
+            match(TK_LC);
+            bs->setStatements(parseStmtList());
+            match(TK_RC);
+            return bs;
+        }
+        ExprNode* parseExpression(int prec) {
+            dt.enter("ParseExpression on " + current().getString());
+            ExprNode* node = parseFirst(prec);
+            while (!expect(TK_EOI) && !isSeperator(current().getSymbol()) && prec <= precedence(current().getSymbol())) {
+                if (expect(TK_RP) || expect(TK_RB))
+                    return node;
+                node = parseRest(node);
+            }
+            return node;
+        }
         StmtNode* parseStmt() {
             Token curr = current();
             dt.say("Parse Statement on " + curr.getString());
-            if (expect(TK_PRINTLN)) {
-                return parsePrint();
-            } else if (expect(TK_LET)) {
-                return parseLet();
-            } else if (expect(TK_WHILE)) {
-                return parseWhile();
-            } else if (expect(TK_IF)) {
-                return parseIf();
-            } else if (expect(TK_DEF)) {
-                return parseFunctionDefinition();
-            } else if (expect(TK_RETURN)) {   
-                return parseReturn();
-            } else if (expect(TK_LC)) {
-                BlockStmt* bs = new BlockStmt(current());
-                match(TK_LC);
-                bs->setStatements(parseStmtList());
-                match(TK_RC);
-                return bs;
-            } else {
-                return parseExprStmt();
+            switch (current().getSymbol()) {
+                case TK_IF: return parseIf();
+                case TK_LET: return parseLet(); 
+                case TK_DEF: return parseFunctionDefinition();
+                case TK_CLASS: return parseClassDefinition();
+                case TK_WHILE: return parseWhile();
+                case TK_RETURN: return parseReturn();
+                case TK_PRINTLN: return parsePrint();
+                case TK_LC: return parseBlock();
+                default: return parseExprStmt();
             }
             return nullptr;
+        }
+        StatementList* parseStmtList() {
+            StatementList* sl = new StatementList(current());
+            while (!expect(TK_EOI)) {
+                if (expect(TK_RC)) {
+                    return sl;
+                }
+                sl->addStatement(parseStmt());
+                if (expect(TK_SEMI)) advance();
+            }
+            return sl;
         }
         void init(vector<Token>& tkns) {
             int n = tkns.size();
@@ -396,17 +443,6 @@ class Parser {
             init(tkns);
         }
         Parser() { loud = false;}
-        StatementList* parseStmtList() {
-            StatementList* sl = new StatementList(current());
-            while (!expect(TK_EOI)) {
-                if (expect(TK_RC)) {
-                    return sl;
-                }
-                sl->addStatement(parseStmt());
-                if (expect(TK_SEMI)) advance();
-            }
-            return sl;
-        }
         StatementList* parse(vector<Token> tkns, bool trace) {
             init(tkns);
             loud = trace;

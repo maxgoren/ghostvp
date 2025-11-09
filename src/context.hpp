@@ -34,6 +34,7 @@ class Context {
             }
             return x;
         }
+        unordered_map<string, ClassObject*> userTypes;
     public:
         Context() {
             global = new Scope();
@@ -61,6 +62,14 @@ class Context {
         }
         void closeScope() {
             scopes = scopes->control;
+        }
+        void addClassDef(string name, ClassObject* obj) {
+            userTypes.insert(make_pair(name, obj));
+        }
+        ClassObject* getClassDef(string name) {
+            if (userTypes.find(name) != userTypes.end())
+                return userTypes[name];
+            return nullptr;
         }
 };
 

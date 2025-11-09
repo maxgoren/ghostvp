@@ -10,9 +10,8 @@ class PrettyPrinter : public Visitor {
         DepthTracker dt;
         bool loud;
     public:
-        PrettyPrinter(bool trace = false) {
-            loud = trace;
-            dt = DepthTracker(loud);
+        PrettyPrinter(bool loud = true) {
+            dt = DepthTracker(true);
         }
         void visit(StatementList* sl) {
             for (auto s : sl->getList()) {
@@ -140,6 +139,20 @@ class PrettyPrinter : public Visitor {
             dt.enter("ListOp " + expr->getToken().getString());
             expr->getList()->accept(this);
             if (expr->getExpr() != nullptr) expr->getExpr()->accept(this);
+            dt.leave();
+        }
+        void visit(ObjectConstructorExpr* expr) {
+            dt.enter("Object Constructor");
+            expr->getName()->accept(this);
+            for (auto t : expr->getExpressions()) {
+                t->accept(this);
+            }
+            dt.leave();
+        }
+        void visit(ObjectDefStmt* stmt) {
+            dt.enter("Object def");
+            stmt->getName()->accept(this);
+            stmt->getBody()->accept(this);
             dt.leave();
         }
 };

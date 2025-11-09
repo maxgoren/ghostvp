@@ -4,16 +4,18 @@
 #include <vector>
 #include "token.hpp"
 #include "lexer_matrix.h"
+#include "util.hpp"
 using namespace std;
 
 class Lexer {
     private:
+        CharBuffer* buffer;
         bool shouldSkip(char ch);
         Token makeLexToken(TKSymbol symbol, char* text, int length);
-        Token nextToken(char* input);
+        Token nextToken();
     public:
         Lexer();
-        vector<Token> tokenizeInput(char* input);
+        vector<Token> tokenizeInput(CharBuffer* buffer);
 };
 
 Lexer::Lexer() { }
@@ -22,59 +24,64 @@ Token Lexer::makeLexToken(TKSymbol symbol, char* text, int length) {
     return Token(symbol, string(text, length));
 }
 
-Token Lexer::nextToken(char* input) {
+Token Lexer::nextToken() {
     int state = 1;
     int last_match = 0;
     int match_len = 0;
-    for (char* p = input; *p; *p++) {
-        //cout<<state<<"("<<*p<<") -> ";
-        state = matrix[state][*p];
+    int len = 0;
+    int start = buffer->markStart();
+    for (char p = buffer->get(); !buffer->done(); buffer->advance(), len++) {
+        cout<<state<<"("<<buffer->get()<<") -> ";
+        state = matrix[state][buffer->get()];
         if (state > 0 && accept[state] > -1) {
             last_match = state;
-            match_len = (p-input)+1;
+            match_len = len;
         }
         if (state < 1) {
             break;
         }
     }
-    //cout<<endl;
+    cout<<endl;
     if (last_match == 0) {
         return {TK_EOI};
     }
-    return makeLexToken((TKSymbol)accept[last_match], input, match_len);
+    return Token((TKSymbol)accept[last_match], buffer->sliceFromStart(match_len));
 }
 
 bool Lexer::shouldSkip(char c) {
     return (c == ' ' || c == '\t' || c == '\r' || c == '\n'); 
 }
 
-Token extractString(char* input) {
+Token extractString(CharBuffer* buffer) {
     string str;
     int k = 0;
-    str.push_back(input[k++]);
-    while (input[k]) {
-        if (input[k] == '"' && input[k-1] != '\\') {
-            str.push_back(input[k++]);
+    char prev = buffer->get();
+    buffer->advance();
+    str.push_back(prev);
+    while (!buffer->done()) {
+        if (buffer->get() == '"' && prev != '\\') {
+            str.push_back(buffer->get());
+            buffer->advance();
             break;
         }
-        str.push_back(input[k++]);
+        str.push_back(buffer->get());
+        buffer->advance();
     }
     return Token(TK_STRING, str);
 }
 
-vector<Token> Lexer::tokenizeInput(char* input) {
+vector<Token> Lexer::tokenizeInput(CharBuffer* buff) {
+    buffer = buff;
     vector<Token> tokens;
-    for (int i = 0; input[i] != '\0';) { 
-        while (shouldSkip(input[i])) i++;
+    for (; !buffer->done();) { 
+        while (shouldSkip(buffer->get())) buffer->advance();
         Token next;
-        if (input[i] == '"') next = extractString(input+i);
-        else next = nextToken(input+i);
+        next = nextToken();
         if (next.getSymbol() != TK_EOI) {
-           // cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
-            i += next.getString().length();
+            cout<<"<"<< next.getSymbol()<<", "<<next.getString()<<">\n";
             tokens.push_back(next);
         } else {
-            i++;
+            buffer->advance();
         }
     }
     tokens.push_back(Token(TK_EOI, "<fin>"));

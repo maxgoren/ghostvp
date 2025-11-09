@@ -15,6 +15,7 @@ class WhileStmt;
 class IfStmt;
 class FuncDefStmt;
 class ReturnStmt;
+class ObjectDefStmt;
 
 class ExpressionList;
 class UnaryOpExpr;
@@ -26,6 +27,7 @@ class SubscriptExpr;
 class ArrayConstructorExpr;
 class ListOpExpr;
 class LambdaExpr;
+class ObjectConstructorExpr;
 
 class Visitor {
     public:
@@ -33,12 +35,13 @@ class Visitor {
         virtual void visit(BlockStmt* stmt) = 0;
         virtual void visit(StatementList* stmtList) = 0;
         virtual void visit(ExprStmt* stmt) = 0;
+        virtual void visit(ReturnStmt* stmt) = 0;
         virtual void visit(PrintStmt* stmt) = 0;
         virtual void visit(LetStmt* stmt) = 0;
         virtual void visit(WhileStmt* stmt) = 0;
         virtual void visit(IfStmt* stmt) = 0;
         virtual void visit(FuncDefStmt* stmt) = 0;
-        virtual void visit(ReturnStmt* stmt) = 0;
+        virtual void visit(ObjectDefStmt* stmt) = 0;
         //expression node visitors
         virtual void visit(ExpressionList* expr) = 0;
         virtual void visit(UnaryOpExpr* expr) = 0;
@@ -50,6 +53,7 @@ class Visitor {
         virtual void visit(ArrayConstructorExpr* expr) = 0;
         virtual void visit(ListOpExpr* expr) = 0;
         virtual void visit(LambdaExpr* expr) = 0;
+        virtual void visit(ObjectConstructorExpr* expr) = 0;
 };
 
 class SyntaxNode {
@@ -289,6 +293,33 @@ class FuncDefStmt : public StmtNode {
         }
 };
 
+class ObjectDefStmt : public StmtNode {  
+    private:
+        IdExpr* name;
+        StatementList* body;
+    public:
+        ObjectDefStmt(Token tk) : StmtNode(tk) { }
+        ~ObjectDefStmt() {
+            delete name;
+            delete body;
+        }
+        void accept(Visitor* visitor) {
+            visitor->visit(this);
+        }
+        void setName(IdExpr* expr) {
+            name = expr;
+        }
+        void setBody(StatementList* stmts) {
+            body = stmts;
+        }
+        IdExpr* getName() {
+            return name;
+        }
+        StatementList* getBody() {
+            return body;
+        }
+};
+
 class ExpressionList : public ExprNode {
     private:
         list<ExprNode*> exprs;
@@ -315,6 +346,29 @@ class ArrayConstructorExpr : public ExprNode {
         list<ExprNode*> exprs;
     public:
         ArrayConstructorExpr(Token tk) : ExprNode(tk) { }
+        list<ExprNode*>& getExpressions() {
+            return exprs;
+        }
+        void addExpr(ExprNode* expr) {
+            exprs.push_back(expr);
+        }
+        void accept(Visitor* visit) {
+            visit->visit(this);
+        }
+};
+
+class ObjectConstructorExpr : public ExprNode {
+    private:
+        IdExpr* name;
+        list<ExprNode*> exprs;
+    public:
+        ObjectConstructorExpr(Token tk) : ExprNode(tk) { }
+        IdExpr* getName() {
+            return name;
+        }
+        void setName(IdExpr* na) {
+            name = na;
+        }
         list<ExprNode*>& getExpressions() {
             return exprs;
         }

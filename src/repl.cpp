@@ -13,6 +13,7 @@ void readEvalPrintLoop(bool loud) {
     PrettyPrinter* pp = new PrettyPrinter(trace);
     ScopeResolver* sr = new ScopeResolver(trace);
     Interpreter* terp = new Interpreter();
+    StringBuffer* sb = new StringBuffer();
     while (running) {
         cout<<"mgcgs> ";
         string input;
@@ -22,7 +23,8 @@ void readEvalPrintLoop(bool loud) {
         } else if (input == ".trace") {
             trace = !trace;
         } else {
-        auto ast = parser.parse(lexer.tokenizeInput(const_cast<char*>(input.data())), trace);
+            sb->init(input);
+        auto ast = parser.parse(lexer.tokenizeInput(sb), trace);
             sr->visit(ast);
             if (trace)
                 pp->visit(ast);
@@ -31,10 +33,10 @@ void readEvalPrintLoop(bool loud) {
     }
 }
 
-void execFromCmd(char* data) {
+void execFromCmd(CharBuffer* data) {
     Lexer lexer;
-    Parser pp(lexer.tokenizeInput(data), true);
-    auto t = pp.parseStmtList();
+    Parser pp;
+    auto t = pp.parse(lexer.tokenizeInput(data), true);
     PrettyPrinter* pv = new PrettyPrinter();
     pv->visit(t);
     ScopeResolver* sr = new ScopeResolver();
@@ -45,9 +47,18 @@ void execFromCmd(char* data) {
 
 int main(int argc, char* argv[]) {
     if (argc > 1) {
-        execFromCmd(argv[1]);
+        CharBuffer* buff;
+        if (argv[1][0] == '-' && argv[1][1] == 'f') {
+            FileStringBuffer* fsb = new FileStringBuffer();
+            fsb->readFile(argv[2]);
+            buff = fsb;
+        } else {
+            StringBuffer* sb = new StringBuffer();
+            sb->init(argv[1]);
+        }
+        execFromCmd(buff);
     } else {
-        readEvalPrintLoop(false);
+        readEvalPrintLoop(true);
     }
     return 0;
 }

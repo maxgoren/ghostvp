@@ -179,6 +179,26 @@ class ScopeResolver : public Visitor {
          void visit(UnaryOpExpr* expr) {
             expr->getExpr()->accept(this);
          }
+         void visit(ObjectConstructorExpr* expr) {
+            dt.enter("Object Constructor");
+            expr->getName()->accept(this);
+            for (auto t : expr->getExpressions()) {
+                t->accept(this);
+            }
+            dt.leave();
+        }
+        void visit(ObjectDefStmt* stmt) {
+            dt.enter("Object def");
+            string name = stmt->getName()->getToken().getString();
+            dt.say("Resolving function definition " + name);
+            declareVarName(name);
+            defineVarName(name);
+            stmt->getName()->accept(this);
+            openScope();            
+            stmt->getBody()->accept(this);
+            closeScope();
+            dt.leave();
+        }
 };
 
 #endif
