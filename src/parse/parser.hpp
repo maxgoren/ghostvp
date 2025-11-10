@@ -36,6 +36,40 @@ class Parser {
         Token previous() {
             return token_pos > 0 ? tokens[token_pos-1]:Token();
         }
+        bool isBinOp(TKSymbol symbol) {
+            switch (symbol) {
+                case TK_EQ:  case TK_LT:  case TK_GT:
+                case TK_NEQ: case TK_LTE: case TK_GTE:
+                case TK_MATCHRE: case TK_AND: case TK_OR:
+                case TK_ASSIGN: case TK_ASSIGN_SUM:
+                case TK_ASSIGN_DIFF:  case TK_MOD:
+                case TK_ADD: case TK_SUB: case TK_MUL:
+                case TK_DIV:
+                    return true;
+                default:
+                    break;
+            }
+            return false;
+        }
+        bool isListOp(TKSymbol symbol) {
+            switch (symbol) {
+                case TK_FIRST:
+                case TK_REST:
+                case TK_POP:
+                case TK_EMPTY:
+                case TK_SIZE:
+                case TK_MAP:
+                case TK_FILTER:
+                case TK_REDUCE:
+                case TK_PUSH:
+                case TK_APPEND:
+                case TK_GET:
+                    return true;
+                default:
+                    break;
+            }
+            return false;
+        }
         bool isSeperator(TKSymbol symbol) {
             switch (symbol) {
                 case TK_LC:
@@ -67,6 +101,7 @@ class Parser {
                 case TK_MUL: return 60;
                 case TK_DIV: return 60;
                 case TK_MOD: return 60;
+                case TK_RANDOM:
                 case TK_NEW:
                 case TK_INCREMENT:
                 case TK_DECREMENT:
@@ -91,187 +126,129 @@ class Parser {
             }
             return 10;
         }
-        ExprNode* parseFirst(int prec) {
-            ExprNode* node = nullptr;
-            dt.enter("Parse First on " + current().getString());
-            switch (current().getSymbol()) {
-                case TK_NUMBER:
-                case TK_STRING:
-                case TK_NULL:
-                case TK_TRUE:
-                case TK_FALSE: 
-                    node =  new ConstExpr(current());
-                    match(current().getSymbol());
-                    dt.leave();
-                    return node;
-                case TK_ID:
-                    node = new IdExpr(current());
-                    match(TK_ID);
-                    dt.leave();
-                    return node;
-                case TK_SUB: {
-                    UnaryOpExpr* node = new UnaryOpExpr(current());
-                    match(TK_SUB);
-                    node->setExpr(parseExpression(precedence(TK_SUB)+40));
-                    dt.leave();
-                    return node;
-                }  break;
-                case TK_LB: {
-                    ArrayConstructorExpr* node = new ArrayConstructorExpr(current());
-                    match(TK_LB);
-                    while (!expect(TK_EOI) && !expect(TK_RB)) {
-                        if (expect(TK_COMMA))
-                            match(TK_COMMA);
-                        node->addExpr(parseExpression(0));
-                    }
-                    match(TK_RB);
-                    dt.leave();
-                    return node;
-                } break;
-                case TK_NEW: {
-                    ObjectConstructorExpr* node = new ObjectConstructorExpr(current());
-                    match(TK_NEW);
-                    node->setName((IdExpr*)parseExpression(0));
-                    if (expect(TK_LP)) {
-                        match(TK_LP);
-                        while (!expect(TK_EOI) && !expect(TK_RP)) {
-                            if (expect(TK_COMMA))
-                                match(TK_COMMA);
-                            node->addExpr(parseExpression(0));
-                        }
-                        match(TK_RP);
-                    }
-                    return node;
-                }
-                case TK_LP: {
-                    match(TK_LP);
-                    node = parseExpression(0);
-                    match(TK_RP);
-                    dt.leave();
-                    return node;
-                } break;
-                case TK_LAMBDA: {
-                    LambdaExpr* node = new LambdaExpr(current());
-                    match(TK_LAMBDA);
-                    node->setParams(parseParamList());
-                    match(TK_RP);
-                    if (expect(TK_PRODUCE)) {
-                        match(TK_PRODUCE);
-                        node->setBody(parseStmtList());
-                    } else {
-                        match(TK_LC);
-                        node->setBody(parseStmtList());
-                        match(TK_RC);
-                    }
-                    dt.leave();
-                    return node;
-                    break;
-                }
-                case TK_FIRST:
-                case TK_REST:
-                case TK_POP:
-                case TK_EMPTY:
-                case TK_SIZE: {
-                    ListOpExpr* node = new ListOpExpr(current());
-                    match(current().getSymbol());
-                    match(TK_LP);
-                    node->setList(parseExpression(0));
-                    match(TK_RP);
-                    return node;
-                } break;
-                case TK_MAP:
-                case TK_FILTER:
-                case TK_REDUCE:
-                case TK_PUSH:
-                case TK_APPEND:
-                case TK_GET: {
-                    ListOpExpr* node = new ListOpExpr(current());
-                    match(current().getSymbol());
-                    match(TK_LP);
-                    node->setList(parseExpression(0));
-                    match(TK_COMMA);
-                    node->setExpr(parseExpression(0));
-                    match(TK_RP);
-                    return node;
-                } break;
-                default:
-                    break;
-            }
-            return node;
-        }
-        ExprNode* parseRest(ExprNode* lhs) {
-            ExprNode* node = nullptr;
-            dt.enter("Parse rest on " + current().getSymbol());
-            switch (current().getSymbol()) {
-                case TK_EQ:
-                case TK_LT: 
-                case TK_GT:
-                case TK_LTE:
-                case TK_GTE:
-                case TK_NEQ:
-                case TK_MATCHRE:
-                case TK_AND:
-                case TK_OR:
-                case TK_ASSIGN:
-                case TK_ASSIGN_SUM:
-                case TK_ASSIGN_DIFF:
-                case TK_ADD: 
-                case TK_SUB:
-                case TK_MUL:
-                case TK_DIV:
-                case TK_MOD: {
-                    BinaryOpExpr* node = new BinaryOpExpr(current());
-                    node->setLeft(lhs);
-                    int p = precedence(current().getSymbol());
-                    advance();
-                    node->setRight(parseExpression(p+10));
-                    dt.leave();
-                    return node;
-                } break; 
-                case TK_LP: {
-                    FunctionCallExpr* node = new FunctionCallExpr(current());
-                    node->setName((IdExpr*)lhs);
-                    match(TK_LP);
-                    node->setArguments(parseExprList());
-                    match(TK_RP);
-                    dt.leave();
-                    return node;
-                } break;
-                case TK_LB: {
-                    SubscriptExpr* node = new SubscriptExpr(current());
-                    node->setName((IdExpr*)lhs);
-                    match(TK_LB);
-                    node->setSubscript(parseExpression(0));
-                    match(TK_RB);
-                    dt.leave();
-                    return node;
-                } break;
-                case TK_PERIOD: {
-                    SubscriptExpr* node = new SubscriptExpr(current());
-                    node->setName((IdExpr*)lhs);
-                    match(TK_PERIOD);
-                    node->setSubscript(parseFirst(0));
-                    dt.leave();
-                    return node;
-                } break;
-                case TK_INCREMENT:
-                case TK_DECREMENT: {
-                    UnaryOpExpr* node = new UnaryOpExpr(current());
-                    match(current().getSymbol());
-                    node->setExpr(lhs);
-                    dt.leave();
-                    return node;
-                }
-                case TK_RB:
-                case TK_RP: 
-                    dt.leave();
-                    return lhs;
-                default:
-                    break;
+        LambdaExpr* parseLambdaExpr(int prec) {
+            LambdaExpr* node = new LambdaExpr(current());
+            match(TK_LAMBDA);
+            node->setParams(parseParamList());
+            match(TK_RP);
+            if (expect(TK_PRODUCE)) {
+                match(TK_PRODUCE);
+                node->setBody(parseStmtList());
+            } else {
+                match(TK_LC);
+                node->setBody(parseStmtList());
+                match(TK_RC);
             }
             dt.leave();
             return node;
-           // return node == nullptr ? lhs:node;
+        }
+        ObjectConstructorExpr* parseObjectConstructor(int prec) {
+            ObjectConstructorExpr* node = new ObjectConstructorExpr(current());
+            match(TK_NEW);
+            node->setName((IdExpr*)parseExpression(0));
+            if (expect(TK_LP)) {
+                match(TK_LP);
+                while (!expect(TK_EOI) && !expect(TK_RP)) {
+                    if (expect(TK_COMMA))
+                        match(TK_COMMA);
+                    node->addExpr(parseExpression(0));
+                }
+                match(TK_RP);
+            }
+            return node;
+        }
+        ArrayConstructorExpr* parseArrayConstructor(int prec) {
+            ArrayConstructorExpr* node = new ArrayConstructorExpr(current());
+            match(TK_LB);
+            while (!expect(TK_EOI) && !expect(TK_RB)) {
+                if (expect(TK_COMMA))
+                    match(TK_COMMA);
+                node->addExpr(parseExpression(0));
+            }
+            match(TK_RB);
+            dt.leave();
+            return node;
+        }
+        ListOpExpr* parseListOpExpr(int prec) {
+            ListOpExpr* node = new ListOpExpr(current());
+                match(current().getSymbol());
+                match(TK_LP);
+                node->setList(parseExpression(0));
+                if (expect(TK_COMMA)) {
+                    match(TK_COMMA);
+                    node->setExpr(parseExpression(0));
+                }
+                match(TK_RP);
+                return node;
+        }
+        SubscriptExpr* parseSubscript(ExprNode* lhs) {
+            SubscriptExpr* node = new SubscriptExpr(current());
+            node->setName((IdExpr*)lhs);
+            match(TK_LB);
+            node->setSubscript(parseExpression(0));
+            match(TK_RB);
+            dt.leave();
+            return node;
+        }
+        SubscriptExpr* parseObjectMember(ExprNode* lhs) {
+            SubscriptExpr* node = new SubscriptExpr(current());
+            node->setName((IdExpr*)lhs);
+            match(TK_PERIOD);
+            node->setSubscript(parseFirst(0));
+            dt.leave();
+            return node;
+        }
+        FunctionCallExpr* parseFunctionCall(ExprNode* lhs) {
+            FunctionCallExpr* node = new FunctionCallExpr(current());
+            node->setName((IdExpr*)lhs);
+            match(TK_LP);
+            node->setArguments(parseExprList());
+            match(TK_RP);
+            dt.leave();
+            return node;
+        }
+        BinaryOpExpr* parseBinaryExpr(ExprNode* lhs) {
+            BinaryOpExpr* node = new BinaryOpExpr(current());
+            node->setLeft(lhs);
+            int p = precedence(current().getSymbol());
+            advance();
+            node->setRight(parseExpression(p+10));
+            dt.leave();
+            return node;
+        }
+        UnaryOpExpr* parsePostfixUnary(ExprNode* lhs) {
+            UnaryOpExpr* node = new UnaryOpExpr(current());
+            match(current().getSymbol());
+            node->setExpr(lhs);
+            dt.leave();
+            return node;
+        }
+        ConstExpr* parseConstExpr(int prec) {
+            ConstExpr* node =  new ConstExpr(current());
+            match(current().getSymbol());
+            dt.leave();
+            return node;
+        }
+        UnaryOpExpr* parsePrefixUnary(int prec) {
+            UnaryOpExpr* node = new UnaryOpExpr(current());
+            match(TK_SUB);
+            node->setExpr(parseExpression(precedence(TK_SUB)+40));
+            dt.leave();
+            return node;
+        }
+        ConstExpr* parseRand() {
+            ConstExpr* node =  new ConstExpr(current());
+            match(current().getSymbol());
+            match(TK_LP);
+            match(TK_RP);
+            dt.leave();
+            return node;
+        }
+        IdExpr* parseIdentifier() {
+            IdExpr* node = new IdExpr(current());
+            match(TK_ID);
+            dt.leave();
+            return node;
         }
         ExpressionList* parseExprList() {
             ExpressionList* el = new ExpressionList(current());
@@ -390,6 +367,49 @@ class Parser {
             bs->setStatements(parseStmtList());
             match(TK_RC);
             return bs;
+        }
+        ExprNode* parseFirst(int prec) {
+            ExprNode* node = nullptr;
+            dt.enter("Parse First on " + current().getString());
+            if (isListOp(current().getSymbol())) {
+                return parseListOpExpr(prec);
+            }
+            switch (current().getSymbol()) {
+                case TK_NUMBER:case TK_STRING:
+                case TK_NULL:
+                case TK_TRUE: case TK_FALSE: 
+                                return parseConstExpr(prec);
+                case TK_SUB:    return parsePrefixUnary(prec);
+                case TK_LB:     return parseArrayConstructor(prec);
+                case TK_NEW:    return parseObjectConstructor(prec);
+                case TK_LAMBDA: return parseLambdaExpr(prec);   
+                case TK_ID:     return parseIdentifier();
+                case TK_RANDOM: return parseRand(); 
+                default:
+                    break;
+            }
+            return node;
+        }
+        ExprNode* parseRest(ExprNode* lhs) {
+            ExprNode* node = nullptr;
+            dt.enter("Parse rest on " + current().getSymbol());
+            if (isBinOp(current().getSymbol())) {
+                return parseBinaryExpr(lhs);
+            }
+            switch (current().getSymbol()) {                      
+                case TK_LP:        return parseFunctionCall(lhs);
+                case TK_LB:        return parseSubscript(lhs);
+                case TK_PERIOD:    return parseObjectMember(lhs);
+                case TK_INCREMENT:
+                case TK_DECREMENT: return parsePostfixUnary(lhs);
+                case TK_RB: case TK_RP: 
+                    dt.leave();
+                    return lhs;
+                default:
+                    break;
+            }
+            dt.leave();
+            return node;
         }
         ExprNode* parseExpression(int prec) {
             dt.enter("ParseExpression on " + current().getString());

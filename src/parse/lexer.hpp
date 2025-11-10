@@ -29,6 +29,7 @@ Token Lexer::nextToken() {
     int last_match = 0;
     int match_len = 0;
     int len = 0;
+    bool inquote = false;
     int start = buffer->markStart();
     for (char p = buffer->get(); !buffer->done(); buffer->advance(), len++) {
         cout<<state<<"("<<buffer->get()<<") -> ";
