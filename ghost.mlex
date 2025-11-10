@@ -28,7 +28,6 @@
 {"println", TK_PRINTLN}
 {"private", TK_PRIVATE}
 {"[A-Za-z][A-Za-z0-9_]*", TK_ID}
-{"\"(.*)\"", TK_STRING}
 {"\(", TK_LP}
 {"\)", TK_RP}
 {"\{", TK_LC}
@@ -58,3 +57,4 @@
 {"[,]", TK_COMMA}
 {"[.]", TK_PERIOD}
 {"[0-9]+([.][0-9]+)*", TK_NUMBER}
+{"\"(.+)\"", TK_STRING}
