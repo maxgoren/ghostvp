@@ -5,8 +5,8 @@
 #include <unordered_map>
 #include <stack>
 #include <vector>
-#include "ast.hpp"
-#include "token.hpp"
+#include "../parse/ast.hpp"
+#include "../parse/token.hpp"
 #include "object.hpp"
 using namespace std;
 
@@ -70,6 +70,9 @@ class Context {
             if (userTypes.find(name) != userTypes.end())
                 return userTypes[name];
             return nullptr;
+        }
+        Object& getNil() {
+            return nilInfo;
         }
 };
 

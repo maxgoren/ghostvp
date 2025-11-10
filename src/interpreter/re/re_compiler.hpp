@@ -2,7 +2,7 @@
 #define re_compiler_hpp
 #include <iostream>
 #include <vector>
-#include <stack>
+#include "../../stack.hpp"
 #include "re_parser.hpp"
 using namespace std;
 
@@ -156,18 +156,9 @@ NFA makeZeorOrOne(NFA a) {
     return makeAlternate(a, makeEpsilonAtomic());
 }
 
-template <class T>
-struct Stack : public stack<T> {
-    T pop() {
-        T ret = stack<T>::top();
-        stack<T>::pop();
-        return ret;
-    }
-};
-
 class RECompiler {
     private:
-        Stack<NFA> st;
+        InspectableStack<NFA> st;
         void trav(astnode* node) {
             if (node != nullptr) {
                 if (node->type == LITERAL) {

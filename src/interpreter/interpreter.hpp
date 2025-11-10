@@ -1,8 +1,8 @@
 #ifndef visitors_hpp
 #define visitors_hpp
-#include "context.hpp"
-#include "resolvescope.hpp"
 #include <cmath>
+#include "resolvescope.hpp"
+#include "context.hpp"
 #include "re/re_compiler.hpp"
 #include "re/subset_match.hpp"
 
@@ -18,19 +18,7 @@ class ReturnStmtException : public std::exception {
 class Interpreter : public Visitor {
     private:
         Context cxt;
-        InsepctableStack<Object> sf;
-        Object add(Object lhs, Object rhs) {
-            if (lhs.type == NUMBER && rhs.type == NUMBER)
-                return Object(lhs.numval + rhs.numval);
-            return Object(string(lhs.toString() + rhs.toString()));
-        }
-        Object sub(Object lhs, Object rhs) {
-            if (lhs.type != NUMBER)
-                return lhs;
-            if (rhs.type != NUMBER)
-                return rhs;
-            return Object(lhs.numval - rhs.numval);
-        }
+        InspectableStack<Object> sf;
         void handleSubscriptAssignment(BinaryOpExpr* expr, Object rhs) {
             auto x = dynamic_cast<SubscriptExpr*>(expr->getLeft());
             x->getName()->accept(this);
@@ -107,26 +95,47 @@ class Interpreter : public Visitor {
             }
             cxt.closeScope();
         }
-        void applyBinaryOperator(BinaryOpExpr* expr, Object& lhs, Object& rhs) {
-            //cout<<lhs.toString()<<" "<<expr->getToken().getString()<<" "<<rhs.toString()<<endl;
+        void doPrimitive(BinaryOpExpr* expr, Object& lhs, Object& rhs) {
             switch (expr->getToken().getSymbol()) {
-                case TK_ASSIGN_SUM:
-                case TK_ASSIGN_DIFF:
-                case TK_ASSIGN: handleAssignment(expr, rhs); break;
-                case TK_MATCHRE: handleRegExMatch(lhs, rhs);
-                case TK_LT: sf.push(Object(lhs.numval < rhs.numval)); break;
-                case TK_GT: sf.push(Object(lhs.numval > rhs.numval)); break;
-                case TK_EQ: sf.push(Object(lhs.numval == rhs.numval)); break;
-                case TK_LTE: sf.push(Object(lhs.numval <= rhs.numval)); break;
-                case TK_GTE: sf.push(Object(lhs.numval >= rhs.numval)); break;
-                case TK_NEQ: sf.push(Object(lhs.numval != rhs.numval)); break;
-                case TK_ADD: sf.push(Object(lhs.numval + rhs.numval));break;
-                case TK_SUB: sf.push(Object(lhs.numval - rhs.numval)); break;
+                case TK_ADD: sf.push(add(lhs, rhs));break;
+                case TK_SUB: sf.push(sub(lhs, rhs)); break;
                 case TK_MUL: sf.push(Object(lhs.numval * rhs.numval));break;
                 case TK_DIV: sf.push(Object(lhs.numval / rhs.numval)); break;
                 case TK_MOD: sf.push(Object(std::fmod(lhs.numval, rhs.numval))); break;
+            }
+        }
+        void doCompare(BinaryOpExpr* expr, Object& lhs, Object& rhs) {
+            switch (expr->getToken().getSymbol()) {
+                case TK_LT: sf.push(lt(lhs, rhs)); break; 
+                case TK_GT: sf.push(gt(lhs,rhs)); break; 
+                case TK_LTE: sf.push(lte(lhs, rhs)); break; 
+                case TK_GTE: sf.push(gte(lhs,rhs)); break;
+                case TK_EQ: sf.push(equ(lhs, rhs)); break;
+                case TK_NEQ: sf.push(neq(lhs, rhs)); break;
+                case TK_MATCHRE: handleRegExMatch(lhs, rhs); break;
+            }
+        }
+        void doLogicOp(BinaryOpExpr* expr, Object& lhs, Object& rhs) {
+            switch (expr->getToken().getSymbol()) {
                 case TK_AND: sf.push(Object(lhs.boolval && rhs.boolval)); break;
-                case TK_OR: sf.push(Object(lhs.boolval ||  rhs.boolval)); break;
+                case TK_OR: sf.push(Object(lhs.boolval || rhs.boolval)); break;
+            }
+        }
+        void applyBinaryOperator(BinaryOpExpr* expr, Object& lhs, Object& rhs) {
+            //cout<<lhs.toString()<<" "<<expr->getToken().getString()<<" "<<rhs.toString()<<endl;
+            switch (expr->getToken().getSymbol()) {
+                case TK_ADD: case TK_SUB: case TK_MUL: case TK_DIV: case TK_MOD:
+                    doPrimitive(expr, lhs, rhs);
+                    break;
+                case TK_ASSIGN_SUM: case TK_ASSIGN_DIFF: case TK_ASSIGN: 
+                    handleAssignment(expr, rhs);
+                     break;
+                case TK_MATCHRE: case TK_LT: case TK_GT:  
+                case TK_EQ: case TK_LTE: case TK_GTE: case TK_NEQ: 
+                    doCompare(expr, lhs, rhs);
+                case TK_AND: case TK_OR:
+                    doLogicOp(expr, lhs, rhs);
+                    break;
                 default:
                     break;
             }
@@ -350,6 +359,7 @@ class Interpreter : public Visitor {
                 case TK_STRING: sf.push(Object(expr->getToken().getString())); break;
                 case TK_TRUE:   sf.push(Object(true)); break;
                 case TK_FALSE:  sf.push(Object(false)); break;
+                case TK_NULL:   sf.push(cxt.getNil()); break;
                 default:
                     break;
             }
@@ -369,7 +379,7 @@ class Interpreter : public Visitor {
             string name = expr->getName()->getToken().getString();
             ClassObject* bt = cxt.getClassDef(name);
             if (bt == nullptr) {
-                cout<<"What!?"<<endl;
+                cout<<"Can't instantiate non-existant type: "<<name<<endl;
                 return;
             }
             ClassObject* nobj = new ClassObject();

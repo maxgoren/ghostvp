@@ -1,8 +1,8 @@
 #ifndef prettyprint_hpp
 #define prettyprint_hpp
-#include "ast.hpp"
-#include "util.hpp"
 #include <iostream>
+#include "../parse/ast.hpp"
+#include "../util.hpp"
 using namespace std;
 
 class PrettyPrinter : public Visitor {

@@ -8,6 +8,7 @@
 {"new", TK_NEW}
 {"pop", TK_POP}
 {"var", TK_LET}
+{"nil", TK_NULL}
 {"else", TK_ELSE}
 {"push", TK_PUSH}
 {"size", TK_SIZE}
@@ -19,13 +20,15 @@
 {"false", TK_FALSE}
 {"class", TK_CLASS}
 {"public", TK_PUBLIC}
+{"random", TK_RANDOM}
 {"append", TK_APPEND}
 {"filter", TK_FILTER}
 {"reduce", TK_REDUCE}
 {"return", TK_RETURN}
 {"println", TK_PRINTLN}
+{"private", TK_PRIVATE}
 {"[A-Za-z][A-Za-z0-9_]*", TK_ID}
-{"\".*\"", TK_STRING}
+{"\"(.*)\"", TK_STRING}
 {"\(", TK_LP}
 {"\)", TK_RP}
 {"\{", TK_LC}

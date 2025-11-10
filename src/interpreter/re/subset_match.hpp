@@ -21,7 +21,7 @@ set<NFAState*> move(char ch, set<NFAState*> states) {
 
 set<NFAState*> e_closure(set<NFAState*> states) {
     set<NFAState*> next = states;
-    Stack<NFAState*> st;
+    InspectableStack<NFAState*> st;
     for (auto s : states) {
         st.push(s);
     }

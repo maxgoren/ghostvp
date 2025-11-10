@@ -3,16 +3,16 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
-#include "ast.hpp"
-#include "util.hpp"
-#include "stack.hpp"
+#include "../parse/ast.hpp"
+#include "../buffer.hpp"
+#include "../stack.hpp"
 using namespace std;
 
 class ScopeResolver : public Visitor {
     private:
     bool loud;
         DepthTracker dt;
-        InsepctableStack<unordered_map<string, bool>> defs;
+        InspectableStack<unordered_map<string, bool>> defs;
         void openScope() {
             dt.say("Opening Scope");
             defs.push(unordered_map<string,bool>());

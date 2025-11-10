@@ -1,7 +1,8 @@
 #ifndef stack_hpp
 #define stack_hpp
+
 template <class T>
-class InsepctableStack {
+class InspectableStack {
     private:
         T *data;
         int maxN;
@@ -15,19 +16,19 @@ class InsepctableStack {
             maxN *= 2;
         }
     public:
-        InsepctableStack() {
+        InspectableStack() {
             sp = 0;
             maxN = 50;
             data = new T[maxN];
         }
-        InsepctableStack(const InsepctableStack& st) {
+        InspectableStack(const InspectableStack& st) {
             sp = 0;
             maxN = st.maxN;
             data = new T[maxN];
             for (int i = 0; i < st.sp; i++)
                 data[i] = st.data[i];
         }
-        InsepctableStack& operator=(const InsepctableStack& st) {
+        InspectableStack& operator=(const InspectableStack& st) {
             if (this == &st)
                 return *this;
             sp = 0;
@@ -37,7 +38,7 @@ class InsepctableStack {
                 data[i] = st.data[i];
             return *this;    
         }
-        ~InsepctableStack() {
+        ~InspectableStack() {
             delete [] data;
         }
         bool empty() {
@@ -47,6 +48,8 @@ class InsepctableStack {
             return sp;
         }
         void push(T info) {
+            if (sp+1 == maxN)
+                grow();
             data[sp++] = info;
         }
         T pop() {
@@ -59,4 +62,5 @@ class InsepctableStack {
             return data[i];
         }
 };
+
 #endif

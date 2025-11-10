@@ -1,8 +1,8 @@
 #include <iostream>
-#include "lexer.hpp"
-#include "parser.hpp"
-#include "prettyprint.hpp"
-#include "interpreter.hpp"
+#include "parse/lexer.hpp"
+#include "parse/parser.hpp"
+#include "interpreter/prettyprint.hpp"
+#include "interpreter/interpreter.hpp"
 using namespace std;
 
 void readEvalPrintLoop(bool loud) {
